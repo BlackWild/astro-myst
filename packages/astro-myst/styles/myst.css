@@ -1,0 +1,146 @@
+/* Default styles for MyST content rendered by astro-myst.
+   Override the custom properties on .myst (or :root) to theme it. */
+.myst {
+  --myst-accent: #1f5f8b;
+  --myst-muted: #5f6b76;
+  --myst-border: #d9dee3;
+  --myst-surface: #f6f8fa;
+  --myst-note: #2f6fb0;
+  --myst-tip: #2e8540;
+  --myst-warning: #b7791f;
+  --myst-danger: #c0392b;
+  --myst-proof: #6b4fa1;
+  --myst-xref-bg: rgba(31, 95, 139, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  .myst {
+    --myst-accent: #79b8e8;
+    --myst-muted: #9aa5b1;
+    --myst-border: #2f3740;
+    --myst-surface: #161b22;
+    --myst-note: #6aa7e6;
+    --myst-tip: #5fbf73;
+    --myst-warning: #e0a84a;
+    --myst-danger: #ef6f61;
+    --myst-proof: #b39ddb;
+    --myst-xref-bg: rgba(121, 184, 232, 0.12);
+  }
+}
+
+/* Headings */
+.myst :is(h1, h2, h3, h4, h5, h6) { position: relative; scroll-margin-top: 5rem; }
+.myst .heading-number { color: var(--myst-muted); font-variant-numeric: tabular-nums; margin-right: 0.15em; }
+.myst .heading-anchor { margin-left: 0.4em; color: var(--myst-muted); text-decoration: none; opacity: 0; transition: opacity 0.15s; font-weight: 400; }
+.myst :is(h1, h2, h3, h4, h5, h6):hover .heading-anchor,
+.myst .heading-anchor:focus-visible { opacity: 1; }
+
+/* Cross-references and citations */
+.myst a.xref, .myst a.cite {
+  color: var(--myst-accent);
+  text-decoration: none;
+  background: var(--myst-xref-bg);
+  border-radius: 3px;
+  padding: 0 0.15em;
+  white-space: nowrap;
+}
+.myst a.cite { background: none; padding: 0; text-decoration: underline dotted; text-underline-offset: 0.2em; white-space: normal; }
+.myst a.xref:hover, .myst a.cite:hover { text-decoration: underline; }
+.myst .xref-unresolved, .myst .cite-error { color: var(--myst-danger); border-bottom: 1px dashed currentColor; }
+.myst :target { animation: myst-target-flash 1.6s ease-out; }
+@keyframes myst-target-flash { from { background: var(--myst-xref-bg); box-shadow: 0 0 0 6px var(--myst-xref-bg); } to { background: transparent; box-shadow: none; } }
+
+/* Math */
+.myst .math-display { display: flex; align-items: center; gap: 1rem; margin: 1.25rem 0; scroll-margin-top: 5rem; }
+.myst .math-display .math-body { flex: 1; overflow-x: auto; overflow-y: hidden; text-align: center; }
+.myst .math-display .equation-number { color: var(--myst-muted); font-variant-numeric: tabular-nums; }
+.myst .math-display .katex-display { margin: 0; }
+
+/* Figures, tables, code */
+.myst figure.myst-container { margin: 1.75rem 0; text-align: center; scroll-margin-top: 5rem; }
+.myst figure.myst-container img { max-width: 100%; height: auto; display: inline-block; }
+.myst figure.myst-container figcaption { margin-top: 0.6rem; font-size: 0.92em; color: var(--myst-muted); text-align: left; }
+.myst figure.myst-container figcaption p { margin: 0.25rem 0; }
+.myst .caption-number { font-weight: 600; color: inherit; }
+.myst figure.myst-table figcaption { margin: 0 0 0.6rem; }
+.myst figure:has(> figure.subfigure) { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; }
+.myst figure:has(> figure.subfigure) > figcaption { flex-basis: 100%; }
+.myst figure.subfigure { flex: 1 1 14rem; margin: 0; }
+.myst figure.subfigure figcaption { text-align: center; }
+.myst .table-wrapper { overflow-x: auto; }
+.myst table { border-collapse: collapse; margin: 0 auto; font-size: 0.95em; }
+.myst th, .myst td { border-bottom: 1px solid var(--myst-border); padding: 0.4rem 0.8rem; text-align: left; }
+.myst thead th { border-bottom-width: 2px; }
+.myst .code-wrapper { margin: 1rem 0; text-align: left; }
+.myst .code-filename { font: 0.8em ui-monospace, monospace; color: var(--myst-muted); padding: 0.3rem 0.8rem; border: 1px solid var(--myst-border); border-bottom: 0; border-radius: 6px 6px 0 0; }
+.myst pre.code-block { padding: 0.9rem 1rem; border-radius: 6px; overflow-x: auto; background: var(--myst-surface); border: 1px solid var(--myst-border); font-size: 0.88em; line-height: 1.5; }
+.myst pre.shiki span { color: var(--shiki-light); }
+@media (prefers-color-scheme: dark) { .myst pre.shiki span { color: var(--shiki-dark); } }
+.myst pre.code-block .line.highlighted { background: var(--myst-xref-bg); display: inline-block; width: 100%; }
+.myst pre.line-numbers code { counter-reset: line; }
+.myst pre.line-numbers .line::before { counter-increment: line; content: counter(line); display: inline-block; width: 2em; margin-right: 1em; text-align: right; color: var(--myst-muted); }
+.myst figure.myst-code figcaption { margin: 0 0 0.4rem; }
+
+/* Admonitions, proofs, dropdowns */
+.myst .admonition { --c: var(--myst-note); margin: 1.25rem 0; border: 1px solid var(--myst-border); border-left: 4px solid var(--c); border-radius: 6px; background: var(--myst-surface); }
+.myst .admonition-title { font-weight: 600; color: var(--c); padding: 0.55rem 1rem 0; }
+.myst .admonition-body { padding: 0.1rem 1rem 0.2rem; }
+.myst :is(.admonition-tip, .admonition-hint, .admonition-seealso) { --c: var(--myst-tip); }
+.myst :is(.admonition-warning, .admonition-caution, .admonition-attention, .admonition-important) { --c: var(--myst-warning); }
+.myst :is(.admonition-danger, .admonition-error) { --c: var(--myst-danger); }
+.myst details.admonition > summary { cursor: pointer; padding-bottom: 0.55rem; }
+.myst details { margin: 1rem 0; }
+.myst details > summary { cursor: pointer; }
+.myst .proof { margin: 1.25rem 0; padding: 0.6rem 1rem; border-left: 3px solid var(--myst-proof); background: var(--myst-surface); border-radius: 0 6px 6px 0; scroll-margin-top: 5rem; }
+.myst .proof-title strong { color: var(--myst-proof); }
+.myst .proof-body > :first-child { margin-top: 0.4rem; }
+.myst .proof-body > :last-child { margin-bottom: 0.2rem; }
+
+/* Tabs (CSS-only) */
+.myst .tab-set { display: flex; flex-wrap: wrap; margin: 1.25rem 0; border: 1px solid var(--myst-border); border-radius: 6px; }
+.myst .tab-set > input { position: absolute; opacity: 0; pointer-events: none; }
+.myst .tab-set > label { order: 0; padding: 0.5rem 1rem; cursor: pointer; color: var(--myst-muted); border-bottom: 2px solid transparent; }
+.myst .tab-set > input:checked + label { color: var(--myst-accent); border-bottom-color: var(--myst-accent); font-weight: 600; }
+.myst .tab-set > input:focus-visible + label { outline: 2px solid var(--myst-accent); }
+.myst .tab-set > .tab-panel { order: 1; flex-basis: 100%; display: none; padding: 0.25rem 1rem; border-top: 1px solid var(--myst-border); }
+.myst .tab-set > input:checked + label + .tab-panel { display: block; }
+
+/* Grids and cards */
+.myst .grid { display: grid; gap: 1rem; grid-template-columns: repeat(var(--grid-cols-0, 1), minmax(0, 1fr)); }
+@media (min-width: 640px) { .myst .grid { grid-template-columns: repeat(var(--grid-cols-2, 2), minmax(0, 1fr)); } }
+.myst .card { display: block; border: 1px solid var(--myst-border); border-radius: 8px; padding: 0.8rem 1rem; color: inherit; text-decoration: none; }
+.myst .card-title { font-weight: 600; margin-bottom: 0.3rem; }
+
+/* Footnotes and bibliography */
+.myst .footnote-ref a { text-decoration: none; color: var(--myst-accent); padding: 0 0.1em; }
+.myst :is(.footnotes, .bibliography) { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--myst-border); font-size: 0.9em; }
+.myst :is(.footnotes, .bibliography) h2 { font-size: 1.05rem; }
+.myst .footnote-backref { margin-left: 0.4em; text-decoration: none; }
+.myst .bibliography-list { list-style: none; padding-left: 0; }
+.myst .bibliography-list li { padding-left: 1.5em; text-indent: -1.5em; margin: 0.4rem 0; scroll-margin-top: 5rem; }
+
+.myst .margin { float: right; clear: right; width: 30%; margin: 0 0 1rem 1rem; font-size: 0.85em; color: var(--myst-muted); }
+.myst .smallcaps { font-variant: small-caps; }
+.myst .myst-unhandled { color: var(--myst-danger); }
+.myst img.align-left { float: left; margin-right: 1rem; }
+.myst img.align-right { float: right; margin-left: 1rem; }
+
+/* Notebook cells and outputs */
+.myst .notebook-cell { margin: 1.25rem 0; }
+.myst .notebook-cell .code-wrapper { margin-bottom: 0; }
+.myst .outputs { border: 1px solid var(--myst-border); border-top: 0; border-radius: 0 0 6px 6px; padding: 0.5rem 1rem; overflow-x: auto; }
+.myst .outputs pre { margin: 0; font-size: 0.85em; white-space: pre-wrap; }
+.myst .outputs .output-error { color: var(--myst-danger); }
+.myst .notebook-cell pre.code-block { border-radius: 6px 6px 0 0; margin-bottom: 0; }
+
+/* Notebook content hidden by cell tags (hide-input, hide-output, hide-cell) */
+.myst details.myst-hidden { margin: 0.5rem 0; }
+.myst details.myst-hidden > summary { font-size: 0.85em; color: var(--myst-muted); }
+.myst .output-html { overflow-x: auto; }
+
+/* Hover previews (XrefPreview.astro) */
+.myst-preview { position: absolute; z-index: 50; max-width: min(32rem, calc(100vw - 2rem)); max-height: 22rem; overflow: auto; padding: 0.8rem 1rem; background: var(--myst-preview-bg, #fff); color: inherit; border: 1px solid var(--myst-border, #d9dee3); border-radius: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); font-size: 0.9rem; }
+.myst-preview figure { margin: 0 !important; }
+.myst-preview img { max-height: 12rem; }
+.myst-preview .heading-anchor { display: none; }
+.myst-preview-source { font-size: 0.75rem; color: var(--myst-muted, #5f6b76); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.04em; }
+@media (prefers-color-scheme: dark) { .myst-preview { --myst-preview-bg: #0d1117; } }

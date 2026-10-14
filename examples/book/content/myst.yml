@@ -1,0 +1,33 @@
+version: 1
+project:
+  id: astro-myst-demo
+  title: Astro + MyST demo
+  authors:
+    - name: Siavash Davani
+      affiliations:
+        - University of Jena
+  numbering:
+    title: true
+    headings: true
+    figure:
+      continue: true
+    table:
+      continue: true
+    equation:
+      continue: true
+  bibliography:
+    - references.bib
+  math:
+    '\dd': '\mathrm{d}'
+  abbreviations:
+    TLS: two-level system
+  toc:
+    - file: index.md
+    - file: theory.md
+      children:
+        - file: oscillator.md
+    - file: results.md
+    - file: notebook.ipynb
+    - file: appendix.md
+site:
+  template: book-theme

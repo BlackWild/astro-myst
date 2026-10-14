@@ -1,0 +1,106 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import type { MarkdownHeading } from 'astro';
+import XrefPreview from 'astro-myst/XrefPreview.astro';
+import 'astro-myst/katex.css';
+import 'astro-myst/styles.css';
+import '../styles/site.css';
+
+interface Props {
+  page: CollectionEntry<'book'>;
+  nav: CollectionEntry<'book'>[];
+  headings: MarkdownHeading[];
+  prev?: CollectionEntry<'book'>;
+  next?: CollectionEntry<'book'>;
+}
+
+const { page, nav, headings, prev, next } = Astro.props;
+const { data } = page;
+const projectTitle = data.projectTitle ?? 'MyST';
+const navTitle = (p: CollectionEntry<'book'>) =>
+  `${p.data.enumerator ? `${p.data.enumerator} ` : ''}${p.data.short_title ?? p.data.title}`;
+const toc = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
+const current = Astro.url.pathname.replace(/\/$/, '') || '/';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{data.title} · {projectTitle}</title>
+    {data.description && <meta name="description" content={data.description} />}
+    <meta name="generator" content={Astro.generator} />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href={import.meta.env.BASE_URL}>{projectTitle}</a>
+      <span class="engine">compiled by <strong>mystmd</strong> · rendered by <strong>Astro</strong></span>
+    </header>
+
+    <div class="shell">
+      <nav class="sidebar" aria-label="Table of contents">
+        <ul>
+          {
+            nav.map((p) => (
+              <li class={`level-${p.data.level}`}>
+                <a href={p.data.url} aria-current={(p.data.url.replace(/\/$/, '') || '/') === current ? 'page' : undefined}>
+                  {navTitle(p)}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+
+      <main>
+        <article class="myst">
+          <header class="title-block">
+            <h1>
+              {data.enumerator && <span class="heading-number">{data.enumerator}</span>} {data.title}
+            </h1>
+            {data.subtitle && <p class="subtitle">{data.subtitle}</p>}
+            {
+              data.authors.length > 0 && (
+                <p class="authors">
+                  {data.authors.map((a, i) => (
+                    <>
+                      {i > 0 && ', '}
+                      <span class="author">{a.name}</span>
+                      {a.affiliations?.length ? <span class="affiliation"> ({a.affiliations.join(', ')})</span> : null}
+                    </>
+                  ))}
+                </p>
+              )
+            }
+          </header>
+          <slot />
+        </article>
+
+        <footer class="pager">
+          {prev ? <a class="prev" href={prev.data.url}><span>Previous</span>{navTitle(prev)}</a> : <span />}
+          {next ? <a class="next" href={next.data.url}><span>Next</span>{navTitle(next)}</a> : <span />}
+        </footer>
+      </main>
+
+      <aside class="outline" aria-label="On this page">
+        {
+          toc.length > 0 && (
+            <>
+              <p class="outline-title">On this page</p>
+              <ul>
+                {toc.map((h) => (
+                  <li class={`depth-${h.depth}`}>
+                    <a href={`#${h.slug}`}>{h.text}</a>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )
+        }
+        <p class="source">Source: <code>{data.source}</code></p>
+      </aside>
+    </div>
+    <XrefPreview />
+  </body>
+</html>

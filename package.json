@@ -1,0 +1,16 @@
+{
+  "name": "astro-myst-monorepo",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w astro-myst",
+    "test": "npm test -w astro-myst",
+    "typecheck": "npm run typecheck -w astro-myst",
+    "example:dev": "npm run dev -w astro-myst-example-book",
+    "example:build": "npm run build -w astro-myst-example-book"
+  }
+}

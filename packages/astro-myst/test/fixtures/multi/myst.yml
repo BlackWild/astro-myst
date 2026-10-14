@@ -1,0 +1,7 @@
+version: 1
+site:
+  projects:
+    - slug: a
+      path: a
+    - slug: b
+      path: b

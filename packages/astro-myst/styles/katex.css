@@ -1,0 +1,2 @@
+/* KaTeX styles matching the math HTML that mystmd pre-renders. */
+@import 'katex/dist/katex.min.css';

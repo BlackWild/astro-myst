@@ -1,0 +1,15 @@
+version: 1
+project:
+  title: Fixture Book
+  numbering:
+    headings: true
+    figure:
+      continue: true
+    equation:
+      continue: true
+  bibliography:
+    - refs.bib
+  toc:
+    - file: index.md
+    - file: chapter.md
+site: {}

@@ -1,0 +1,153 @@
+---
+/**
+ * Hover/focus previews for MyST cross-references and citations, like the MyST
+ * book theme: pointing at a reference shows the referenced figure, equation,
+ * table, theorem, section or bibliography entry, even when it lives on another
+ * page. Add it once per page (e.g. in your layout):
+ *
+ *   import XrefPreview from 'astro-myst/XrefPreview.astro';
+ *   <XrefPreview />
+ */
+interface Props {
+  /** CSS selector of links that get previews. */
+  selector?: string;
+  /** Delay before showing a preview, in ms. */
+  delay?: number;
+}
+const { selector = 'a.xref, a.cite', delay = 150 } = Astro.props;
+---
+
+<astro-myst-xref-preview data-selector={selector} data-delay={delay} hidden></astro-myst-xref-preview>
+
+<script>
+  class XrefPreview extends HTMLElement {
+    private cache = new Map<string, Promise<Document | null>>();
+    private popup: HTMLElement | null = null;
+    private hideTimer: number | undefined;
+    private showTimer: number | undefined;
+    private active: HTMLAnchorElement | null = null;
+
+    private abort?: AbortController;
+
+    disconnectedCallback() {
+      this.abort?.abort();
+      this.hide();
+    }
+
+    connectedCallback() {
+      if (!window.matchMedia('(hover: hover)').matches) return; // no hover on touch screens
+      this.abort?.abort();
+      this.abort = new AbortController();
+      const { signal } = this.abort;
+      const selector = this.dataset.selector || 'a.xref, a.cite';
+      const delay = Number(this.dataset.delay ?? 150);
+      const start = (event: Event) => {
+        const link = (event.target as Element | null)?.closest?.(selector) as HTMLAnchorElement | null;
+        if (!link) return;
+        clearTimeout(this.hideTimer);
+        clearTimeout(this.showTimer);
+        this.active = link;
+        this.showTimer = window.setTimeout(() => this.show(link), delay);
+      };
+      const stop = (event: Event) => {
+        if ((event.target as Element | null)?.closest?.(selector)) this.scheduleHide();
+      };
+      document.addEventListener('mouseover', start, { signal });
+      document.addEventListener('focusin', start, { signal });
+      document.addEventListener('mouseout', stop, { signal });
+      document.addEventListener('focusout', stop, { signal });
+      document.addEventListener('keydown', (e) => e.key === 'Escape' && this.hide(), { signal });
+    }
+
+    private load(url: string) {
+      if (!this.cache.has(url)) {
+        const parser = new DOMParser();
+        this.cache.set(
+          url,
+          fetch(url)
+            .then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
+            .then((html) => parser.parseFromString(html, 'text/html'))
+            .catch(() => null),
+        );
+      }
+      return this.cache.get(url)!;
+    }
+
+    private extract(target: Element): HTMLElement {
+      // For a section heading, show the heading plus the start of its section.
+      if (/^H[1-6]$/.test(target.tagName)) {
+        const wrapper = document.createElement('div');
+        wrapper.append(target.cloneNode(true));
+        let next = target.nextElementSibling;
+        for (let i = 0; next && i < 2 && !/^H[1-6]$/.test(next.tagName); i++) {
+          wrapper.append(next.cloneNode(true));
+          next = next.nextElementSibling;
+        }
+        return wrapper;
+      }
+      return target.cloneNode(true) as HTMLElement;
+    }
+
+    private scheduleHide() {
+      clearTimeout(this.showTimer);
+      this.hideTimer = window.setTimeout(() => this.hide(), 150);
+    }
+
+    private hide() {
+      this.popup?.remove();
+      this.popup = null;
+      this.active?.removeAttribute('aria-describedby');
+      this.active = null;
+    }
+
+    private async show(link: HTMLAnchorElement) {
+      const url = new URL(link.href, location.href);
+      const id = decodeURIComponent(url.hash.slice(1));
+      if (!id || url.origin !== location.origin) return;
+      const samePage = url.pathname === location.pathname;
+      const doc = samePage ? document : await this.load(url.pathname);
+      const target = doc?.getElementById(id);
+      if (!target || this.active !== link) return;
+      document.getElementById('astro-myst-preview')?.remove();
+      this.popup?.remove();
+      const popup = document.createElement('div');
+      popup.className = 'myst myst-preview';
+      popup.id = 'astro-myst-preview';
+      popup.setAttribute('role', 'tooltip');
+      if (!samePage) {
+        const source = document.createElement('div');
+        source.className = 'myst-preview-source';
+        source.textContent = doc?.querySelector('h1')?.textContent?.replace(/#\s*$/, '').trim() || url.pathname;
+        popup.append(source);
+      }
+      const content = this.extract(target);
+      content.removeAttribute('id');
+      content.querySelectorAll('[id]').forEach((el) => el.removeAttribute('id'));
+      // Cloned tab radios must not join (and uncheck) the page's own radio groups.
+      content.querySelectorAll('input').forEach((input) => {
+        input.removeAttribute('name');
+        input.setAttribute('tabindex', '-1');
+      });
+      content.querySelectorAll('img[loading="lazy"]').forEach((img) => img.removeAttribute('loading'));
+      popup.append(content);
+      popup.addEventListener('mouseenter', () => clearTimeout(this.hideTimer));
+      popup.addEventListener('mouseleave', () => this.scheduleHide());
+      document.body.append(popup);
+      link.setAttribute('aria-describedby', popup.id);
+      this.popup = popup;
+
+      const rect = link.getBoundingClientRect();
+      const maxLeft = window.scrollX + document.documentElement.clientWidth - popup.offsetWidth - 8;
+      const left = Math.max(window.scrollX + 8, Math.min(rect.left + window.scrollX, maxLeft));
+      const fitsBelow = rect.bottom + popup.offsetHeight + 12 < window.innerHeight;
+      popup.style.left = `${left}px`;
+      popup.style.top = fitsBelow
+        ? `${rect.bottom + window.scrollY + 6}px`
+        : `${rect.top + window.scrollY - popup.offsetHeight - 6}px`;
+    }
+  }
+
+  if (!customElements.get('astro-myst-xref-preview')) {
+    customElements.define('astro-myst-xref-preview', XrefPreview);
+  }
+</script>

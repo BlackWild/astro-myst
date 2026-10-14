@@ -1,0 +1,84 @@
+{
+  "name": "astro-myst",
+  "version": "0.1.0",
+  "description": "MyST Markdown for Astro: a content loader powered by the official mystmd compiler, with numbered figures, equations and sections, cross-references across pages, citations, math and notebooks.",
+  "keywords": [
+    "astro",
+    "withastro",
+    "astro-loader",
+    "astro-component",
+    "myst",
+    "mystmd",
+    "myst-markdown",
+    "jupyter-book",
+    "markdown",
+    "scientific-writing",
+    "cross-references",
+    "katex"
+  ],
+  "license": "MIT",
+  "author": "Siavash Davani",
+  "type": "module",
+  "sideEffects": [
+    "*.css",
+    "*.astro"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./styles.css": "./styles/myst.css",
+    "./katex.css": "./styles/katex.css",
+    "./XrefPreview.astro": "./components/XrefPreview.astro",
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "components",
+    "styles",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.20.8"
+  },
+  "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build && npm run typecheck && npm test"
+  },
+  "peerDependencies": {
+    "astro": "^5.0.0 || ^6.0.0 || ^7.0.0",
+    "mystmd": "^1.3.0"
+  },
+  "peerDependenciesMeta": {
+    "mystmd": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "hast-util-to-html": "^9.0.5",
+    "hastscript": "^9.0.1",
+    "katex": "^0.15.6",
+    "shiki": "^1.0.0 || ^2.0.0 || ^3.0.0 || ^4.0.0",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/hast": "^3.0.4",
+    "@types/node": "^22.19.0",
+    "astro": "^7.3.8",
+    "mystmd": "^1.11.0",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.4"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
