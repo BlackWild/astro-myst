@@ -22,6 +22,9 @@ updates:
       # katex must match the KaTeX version mystmd renders with (0.15.x); see packages/astro-myst/styles/katex.css
       - dependency-name: katex
         update-types: ['version-update:semver-major', 'version-update:semver-minor']
+      # @astrojs/check supports TypeScript 5 and 6 only; move to 7 once it does
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
       # Type definitions follow the oldest supported Node.js major
       - dependency-name: '@types/node'
         update-types: ['version-update:semver-major']
