@@ -1,0 +1,7 @@
+version: 1
+project:
+  title: Minimal astro-myst site
+  toc:
+    - file: index.md
+    - file: details.md
+site: {}

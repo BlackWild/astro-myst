@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://blackwild.github.io/astro-myst/
+    about: Guides, reference and troubleshooting.
+  - name: MyST syntax
+    url: https://mystmd.org/guide
+    about: How to write MyST Markdown (directives, roles, numbering, citations) is documented by the MyST project.
+  - name: Security vulnerability
+    url: https://github.com/BlackWild/astro-myst/security/advisories/new
+    about: Please report security issues privately.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderMystPage, type RenderOptions } from '../src/render.js';
+import { type RenderOptions, renderMystPage } from '../src/render.js';
 import type { MystNode, MystPageJson } from '../src/types.js';
 
 const opts: RenderOptions = {
@@ -38,9 +38,34 @@ describe('renderMystPage', () => {
       {
         type: 'paragraph',
         children: [
-          { type: 'crossReference', kind: 'figure', identifier: 'fig-a', html_id: 'fig-a', resolved: true, children: [t('Figure 1')] },
-          { type: 'crossReference', kind: 'equation', identifier: 'eq-b', html_id: 'eq-b', resolved: true, remote: true, url: '/theory', children: [t('(3)')] },
-          { type: 'crossReference', kind: 'heading', identifier: 'sec-x', html_id: 'sec-x', resolved: true, remote: true, url: '/', children: [t('Section 1')] },
+          {
+            type: 'crossReference',
+            kind: 'figure',
+            identifier: 'fig-a',
+            html_id: 'fig-a',
+            resolved: true,
+            children: [t('Figure 1')],
+          },
+          {
+            type: 'crossReference',
+            kind: 'equation',
+            identifier: 'eq-b',
+            html_id: 'eq-b',
+            resolved: true,
+            remote: true,
+            url: '/theory',
+            children: [t('(3)')],
+          },
+          {
+            type: 'crossReference',
+            kind: 'heading',
+            identifier: 'sec-x',
+            html_id: 'sec-x',
+            resolved: true,
+            remote: true,
+            url: '/',
+            children: [t('Section 1')],
+          },
           { type: 'crossReference', identifier: 'missing', resolved: false },
         ],
       },
@@ -53,11 +78,21 @@ describe('renderMystPage', () => {
 
   it('renders numbered display math with the pre-rendered KaTeX HTML', async () => {
     const { html } = await render([
-      { type: 'math', value: 'E=mc^2', label: 'eq-e', identifier: 'eq-e', html_id: 'eq-e', enumerator: '4', html: '<span class="katex">E</span>' },
+      {
+        type: 'math',
+        value: 'E=mc^2',
+        label: 'eq-e',
+        identifier: 'eq-e',
+        html_id: 'eq-e',
+        enumerator: '4',
+        html: '<span class="katex">E</span>',
+      },
       { type: 'math', value: 'x', html: '<span class="katex">x</span>' },
       { type: 'paragraph', children: [{ type: 'inlineMath', value: 'y' }] },
     ]);
-    expect(html).toContain('<div class="math-display" id="eq-e"><div class="math-body"><span class="katex">E</span></div><span class="equation-number">(4)</span></div>');
+    expect(html).toContain(
+      '<div class="math-display" id="eq-e"><div class="math-body"><span class="katex">E</span></div><span class="equation-number">(4)</span></div>',
+    );
     expect(html).toContain('<div class="math-display"><div class="math-body"><span class="katex">x</span></div></div>');
     expect(html).toContain('<span class="math-inline"><code>y</code></span>'); // fallback without html
   });
@@ -72,7 +107,15 @@ describe('renderMystPage', () => {
         enumerator: '1',
         children: [
           { type: 'image', url: '/a-123.png', alt: 'A', width: '50%' },
-          { type: 'caption', children: [{ type: 'paragraph', children: [{ type: 'captionNumber', kind: 'figure', children: [t('Figure 1:')] }, t('Caption')] }] },
+          {
+            type: 'caption',
+            children: [
+              {
+                type: 'paragraph',
+                children: [{ type: 'captionNumber', kind: 'figure', children: [t('Figure 1:')] }, t('Caption')],
+              },
+            ],
+          },
         ],
       },
     ]);
@@ -85,7 +128,13 @@ describe('renderMystPage', () => {
   it('renders tables with header rows in <thead>', async () => {
     const cell = (v: string, header = false): MystNode => ({ type: 'tableCell', header, children: [t(v)] });
     const { html } = await render([
-      { type: 'table', children: [{ type: 'tableRow', children: [cell('A', true), cell('B', true)] }, { type: 'tableRow', children: [cell('1'), cell('2')] }] },
+      {
+        type: 'table',
+        children: [
+          { type: 'tableRow', children: [cell('A', true), cell('B', true)] },
+          { type: 'tableRow', children: [cell('1'), cell('2')] },
+        ],
+      },
     ]);
     expect(html).toContain('<thead><tr><th>A</th><th>B</th></tr></thead><tbody><tr><td>1</td><td>2</td></tr></tbody>');
   });
@@ -96,17 +145,34 @@ describe('renderMystPage', () => {
         {
           type: 'paragraph',
           children: [
-            { type: 'citeGroup', kind: 'parenthetical', children: [{ type: 'cite', label: 'k84', kind: 'parenthetical', children: [t('Knuth, 1984')] }] },
+            {
+              type: 'citeGroup',
+              kind: 'parenthetical',
+              children: [{ type: 'cite', label: 'k84', kind: 'parenthetical', children: [t('Knuth, 1984')] }],
+            },
             { type: 'footnoteReference', identifier: 'n', enumerator: '1' },
           ],
         },
-        { type: 'footnoteDefinition', identifier: 'n', enumerator: '1', children: [{ type: 'paragraph', children: [t('Note.')] }] },
+        {
+          type: 'footnoteDefinition',
+          identifier: 'n',
+          enumerator: '1',
+          children: [{ type: 'paragraph', children: [t('Note.')] }],
+        },
       ],
       {},
-      { references: { cite: { order: ['k84'], data: { k84: { label: 'k84', html: 'Knuth, D. (1984). <i>The TeXbook</i>.' } } } } },
+      {
+        references: {
+          cite: { order: ['k84'], data: { k84: { label: 'k84', html: 'Knuth, D. (1984). <i>The TeXbook</i>.' } } },
+        },
+      },
     );
-    expect(html).toContain('<span class="cite-group">(<a class="cite" href="#cite-k84" data-cite="k84">Knuth, 1984</a>)</span>');
-    expect(html).toContain('<sup class="footnote-ref"><a href="#fn-n" id="fnref-n" aria-label="Footnote 1">1</a></sup>');
+    expect(html).toContain(
+      '<span class="cite-group">(<a class="cite" href="#cite-k84" data-cite="k84">Knuth, 1984</a>)</span>',
+    );
+    expect(html).toContain(
+      '<sup class="footnote-ref"><a href="#fn-n" id="fnref-n" aria-label="Footnote 1">1</a></sup>',
+    );
     expect(html).toMatch(/<li id="fn-n" value="1"><p>Note\. <a class="footnote-backref" href="#fnref-n"/);
     expect(html).toContain('<li id="cite-k84">Knuth, D. (1984). <i>The TeXbook</i>.</li>');
   });
@@ -136,7 +202,17 @@ describe('renderMystPage', () => {
       {
         type: 'paragraph',
         children: [
-          { type: 'crossReference', kind: 'heading', identifier: 'install', html_id: 'install', resolved: true, remote: true, url: '/', remoteBaseUrl: 'https://mystmd.org/guide/', children: [t('Install')] },
+          {
+            type: 'crossReference',
+            kind: 'heading',
+            identifier: 'install',
+            html_id: 'install',
+            resolved: true,
+            remote: true,
+            url: '/',
+            remoteBaseUrl: 'https://mystmd.org/guide/',
+            children: [t('Install')],
+          },
         ],
       },
     ]);
@@ -151,10 +227,21 @@ describe('renderMystPage', () => {
         kind: 'notebook-code',
         children: [
           { type: 'code', lang: 'python', value: 'SECRET = 1', visibility: 'remove' },
-          { type: 'outputs', visibility: 'hide', children: [{ type: 'output', jupyter_data: { output_type: 'stream', name: 'stdout', text: 'shown later' } }] },
+          {
+            type: 'outputs',
+            visibility: 'hide',
+            children: [
+              { type: 'output', jupyter_data: { output_type: 'stream', name: 'stdout', text: 'shown later' } },
+            ],
+          },
         ],
       },
-      { type: 'block', kind: 'notebook-code', visibility: 'remove', children: [{ type: 'code', value: 'REMOVED_CELL' }] },
+      {
+        type: 'block',
+        kind: 'notebook-code',
+        visibility: 'remove',
+        children: [{ type: 'code', value: 'REMOVED_CELL' }],
+      },
     ]);
     expect(html).not.toContain('SECRET');
     expect(html).not.toContain('REMOVED_CELL');
@@ -163,13 +250,40 @@ describe('renderMystPage', () => {
 
   it('renders proofs, admonitions and dropdowns', async () => {
     const { html } = await render([
-      { type: 'proof', kind: 'theorem', label: 'thm', identifier: 'thm', html_id: 'thm', enumerator: '2', children: [{ type: 'admonitionTitle', children: [t('Big')] }, { type: 'paragraph', children: [t('Body')] }] },
-      { type: 'admonition', kind: 'warning', children: [{ type: 'admonitionTitle', children: [t('Careful')] }, { type: 'paragraph', children: [t('x')] }] },
-      { type: 'admonition', kind: 'note', class: 'dropdown', children: [{ type: 'admonitionTitle', children: [t('More')] }] },
+      {
+        type: 'proof',
+        kind: 'theorem',
+        label: 'thm',
+        identifier: 'thm',
+        html_id: 'thm',
+        enumerator: '2',
+        children: [
+          { type: 'admonitionTitle', children: [t('Big')] },
+          { type: 'paragraph', children: [t('Body')] },
+        ],
+      },
+      {
+        type: 'admonition',
+        kind: 'warning',
+        children: [
+          { type: 'admonitionTitle', children: [t('Careful')] },
+          { type: 'paragraph', children: [t('x')] },
+        ],
+      },
+      {
+        type: 'admonition',
+        kind: 'note',
+        class: 'dropdown',
+        children: [{ type: 'admonitionTitle', children: [t('More')] }],
+      },
     ]);
-    expect(html).toContain('<aside class="proof proof-theorem" id="thm"><div class="proof-title"><strong>Theorem 2</strong> (Big)</div>');
+    expect(html).toContain(
+      '<aside class="proof proof-theorem" id="thm"><div class="proof-title"><strong>Theorem 2</strong> (Big)</div>',
+    );
     expect(html).toContain('<aside class="admonition admonition-warning"><div class="admonition-title">Careful</div>');
-    expect(html).toContain('<details class="admonition admonition-note dropdown"><summary class="admonition-title">More</summary>');
+    expect(html).toContain(
+      '<details class="admonition admonition-note dropdown"><summary class="admonition-title">More</summary>',
+    );
   });
 
   it('highlights code with Shiki and can disable it', async () => {
@@ -191,7 +305,8 @@ describe('renderMystPage', () => {
       {
         handlers: {
           myWidget: (node, ctx) => ctx.h('my-widget', { value: node.value }),
-          admonition: (node, ctx) => (node.kind === 'tip' ? ctx.h('div', { class: 'wrap' }, ctx.renderDefault(node)) : undefined),
+          admonition: (node, ctx) =>
+            node.kind === 'tip' ? ctx.h('div', { class: 'wrap' }, ctx.renderDefault(node)) : undefined,
         },
       },
     );
@@ -206,8 +321,14 @@ describe('renderMystPage', () => {
         type: 'outputs',
         children: [
           { type: 'output', jupyter_data: { output_type: 'stream', name: 'stdout', text: 'hello\n' } },
-          { type: 'output', jupyter_data: { output_type: 'display_data', data: { 'image/png': { path: '/plot-1.png' } } } },
-          { type: 'output', jupyter_data: { output_type: 'execute_result', data: { 'text/plain': { content: '42' } } } },
+          {
+            type: 'output',
+            jupyter_data: { output_type: 'display_data', data: { 'image/png': { path: '/plot-1.png' } } },
+          },
+          {
+            type: 'output',
+            jupyter_data: { output_type: 'execute_result', data: { 'text/plain': { content: '42' } } },
+          },
         ],
       },
     ]);
@@ -217,14 +338,20 @@ describe('renderMystPage', () => {
   });
 
   it('renders the older (mystmd < 1.7) output format and large outputs stored as files', async () => {
-    const files: Record<string, string> = { '/big.html': '<table><tr><td>big</td></tr></table>', '/log.txt': 'full log' };
+    const files: Record<string, string> = {
+      '/big.html': '<table><tr><td>big</td></tr></table>',
+      '/log.txt': 'full log',
+    };
     const { html } = await render(
       [
         {
           type: 'output',
           data: [
             { output_type: 'stream', name: 'stdout', text: 'trunc...', path: '/log.txt' },
-            { output_type: 'execute_result', data: { 'text/html': { content_type: 'text/html', path: '/big.html' }, 'text/plain': { content: 'df' } } },
+            {
+              output_type: 'execute_result',
+              data: { 'text/html': { content_type: 'text/html', path: '/big.html' }, 'text/plain': { content: 'df' } },
+            },
           ],
         },
       ],
@@ -236,7 +363,10 @@ describe('renderMystPage', () => {
 
   it('escapes text and never crashes on unknown nodes', async () => {
     const { html } = await render([
-      { type: 'paragraph', children: [t('<script>alert(1)</script>'), { type: 'somethingNew', children: [t('inner')] }] },
+      {
+        type: 'paragraph',
+        children: [t('<script>alert(1)</script>'), { type: 'somethingNew', children: [t('inner')] }],
+      },
       { type: 'leafThing', value: 'leaf' },
       { type: 'mystDirective', name: 'unknown', args: 'a' },
     ]);

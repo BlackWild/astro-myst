@@ -8,7 +8,12 @@ import { mystLoader, mystPageSchema } from '../src/loader.js';
 import { copyFixture, memoryLogger } from './helpers.js';
 
 /** Minimal stand-in for Astro's LoaderContext (enough for the loader's contract). */
-function fakeContext(projectDir: string, publicDir: string, configOverrides: Record<string, unknown> = {}, watcher?: any) {
+function fakeContext(
+  projectDir: string,
+  publicDir: string,
+  configOverrides: Record<string, unknown> = {},
+  watcher?: any,
+) {
   const entries = new Map<string, any>();
   const metaStore = new Map<string, string>();
   const { logger, messages } = memoryLogger();
@@ -26,7 +31,10 @@ function fakeContext(projectDir: string, publicDir: string, configOverrides: Rec
     logger,
     store: {
       clear: () => entries.clear(),
-      set: (e: any) => (entries.set(e.id, e), true),
+      set: (e: any) => {
+        entries.set(e.id, e);
+        return true;
+      },
       get: (id: string) => entries.get(id),
       keys: () => [...entries.keys()],
       values: () => [...entries.values()],
@@ -60,7 +68,14 @@ describe('mystLoader', () => {
 
     expect([...entries.keys()].sort()).toEqual(['chapter', 'index']);
     const index = entries.get('index');
-    expect(index.data).toMatchObject({ title: 'Home', path: '', url: '/docs/', isIndex: true, order: 0, projectTitle: 'Fixture Book' });
+    expect(index.data).toMatchObject({
+      title: 'Home',
+      path: '',
+      url: '/docs/',
+      isIndex: true,
+      order: 0,
+      projectTitle: 'Fixture Book',
+    });
     expect(entries.get('chapter').data).toMatchObject({ path: 'chapter', url: '/docs/chapter/', order: 1 });
     expect(index.rendered.html).toContain('href="/docs/chapter/#eq-euler"');
     expect(index.rendered.html).toMatch(/src="\/docs\/_myst\/book\/dot-[0-9a-f]+\.svg"/);
@@ -93,7 +108,11 @@ describe('mystLoader', () => {
     const { ctx, entries, messages } = fakeContext(site, path.join(site, 'public'));
     await mystLoader({ root: './content' }).load(ctx);
     expect([...entries.keys()].sort()).toEqual(['index', 'intro']);
-    expect(entries.get('index').data).toMatchObject({ title: 'A home', projectTitle: 'Project A', source: 'a/index.md' });
+    expect(entries.get('index').data).toMatchObject({
+      title: 'A home',
+      projectTitle: 'Project A',
+      source: 'a/index.md',
+    });
     expect(entries.get('index').rendered.html).toContain('href="/intro#sec-a-intro"');
     expect(entries.get('intro').rendered.html).toContain('<a href="/">home</a>');
     expect(messages.some((m) => m.level === 'warn' && m.msg.includes('2 projects'))).toBe(true);
@@ -145,7 +164,12 @@ describe('mystLoader', () => {
     let explode = false;
     const loader = mystLoader({
       root: './content',
-      handlers: { admonition: () => { if (explode) throw new Error('handler exploded'); return undefined; } },
+      handlers: {
+        admonition: () => {
+          if (explode) throw new Error('handler exploded');
+          return undefined;
+        },
+      },
     });
     await loader.load(ctx);
     expect(entries.size).toBe(2);
@@ -184,9 +208,14 @@ describe('mystLoader', () => {
     const site = fs.mkdtempSync(path.join(os.tmpdir(), 'astro-myst-site-'));
     fs.cpSync(copyFixture('basic'), path.join(site, 'content'), { recursive: true });
     const yml = path.join(site, 'content', 'myst.yml');
-    fs.writeFileSync(yml, fs.readFileSync(yml, 'utf8').replace('site: {}', 'site:\n  options:\n    numbered_references: true'));
+    fs.writeFileSync(
+      yml,
+      fs.readFileSync(yml, 'utf8').replace('site: {}', 'site:\n  options:\n    numbered_references: true'),
+    );
     const { ctx, entries } = fakeContext(site, path.join(site, 'public'));
     await mystLoader({ root: './content' }).load(ctx);
-    expect(entries.get('index').rendered.html).toContain('<span class="cite-group">[<a class="cite" href="#cite-knuth1984" data-cite="knuth1984">1</a>]</span>');
+    expect(entries.get('index').rendered.html).toContain(
+      '<span class="cite-group">[<a class="cite" href="#cite-knuth1984" data-cite="knuth1984">1</a>]</span>',
+    );
   });
 });

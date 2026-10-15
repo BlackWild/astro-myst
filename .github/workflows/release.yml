@@ -1,0 +1,144 @@
+# Releases with Changesets and npm trusted publishing (OIDC): no npm token is stored anywhere.
+#
+# - Changesets on main  -> the "version" job opens/updates the "Version Packages" pull request.
+# - That PR is merged   -> the "pack" and "publish" jobs publish to npm (with provenance)
+#                          and create the git tag and GitHub release.
+#
+# One-time setup (see MAINTAINING.md): publish the first version manually, then add this
+# workflow as the package's trusted publisher on npmjs.com (workflow file: release.yml,
+# environment: npm).
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  select-mode:
+    name: Select mode
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      mode: ${{ steps.select-mode.outputs.mode }}
+      publish-plan-artifact-id: ${{ steps.select-mode.outputs.publish-plan-artifact-id }}
+      bootstrapped: ${{ steps.bootstrap.outputs.bootstrapped }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+        with:
+          cache: 'false'
+      - name: Select Changesets mode
+        id: select-mode
+        uses: changesets/action/select-mode@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+      - name: Check that the package exists on npm
+        id: bootstrap
+        # npm trusted publishing can only be configured for packages that already exist.
+        # Until the first version has been published manually, skip publishing instead of failing.
+        run: |
+          if npm view astro-myst version >/dev/null 2>&1; then
+            echo "bootstrapped=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "bootstrapped=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=astro-myst is not on npm yet::Publish the first version manually and set up trusted publishing (see MAINTAINING.md). Publishing is skipped until then."
+          fi
+
+  version:
+    name: Version Packages pull request
+    needs: select-mode
+    if: ${{ needs.select-mode.outputs.mode == 'version' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # commit the version bump
+      pull-requests: write # open the "Version Packages" pull request
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+        with:
+          cache: 'false'
+      # Optional: a GitHub App token makes CI run on the Version Packages PR
+      # (pull requests opened with GITHUB_TOKEN do not trigger workflows).
+      - name: Create GitHub App token
+        id: app-token
+        if: ${{ vars.RELEASE_APP_CLIENT_ID != '' }}
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - name: Create or update the Version Packages pull request
+        uses: changesets/action/version@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          github-token: ${{ steps.app-token.outputs.token || github.token }}
+          script: npm run version-packages
+          commit-message: 'chore: version packages'
+          pr-title: 'chore: version packages'
+
+  pack:
+    name: Pack
+    needs: select-mode
+    if: ${{ needs.select-mode.outputs.mode == 'publish' && needs.select-mode.outputs.bootstrapped == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      pack-dir-artifact-id: ${{ steps.pack.outputs.pack-dir-artifact-id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+        with:
+          cache: 'false'
+      - run: npm run build
+      - run: npm test
+      - run: npm run check:package
+      - name: Pack
+        id: pack
+        uses: changesets/action/pack@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          publish-plan-artifact-id: ${{ needs.select-mode.outputs.publish-plan-artifact-id }}
+
+  publish:
+    name: Publish to npm
+    needs: pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Must match the environment configured for the trusted publisher on npmjs.com.
+    # Add required reviewers to this environment to approve every release manually.
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/astro-myst
+    permissions:
+      contents: write # push the release tag and create the GitHub release
+      id-token: write # npm trusted publishing (OIDC) and provenance
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+        with:
+          cache: 'false'
+      - name: Check that npm supports trusted publishing (>= 11.5.1)
+        run: |
+          npm --version
+          node -e "const [a, b, c] = require('node:child_process').execSync('npm --version').toString().trim().split('.').map(Number); if (a * 1e6 + b * 1e3 + c < 11005001) { console.error('npm >= 11.5.1 is required for trusted publishing'); process.exit(1); }"
+      - name: Publish
+        uses: changesets/action/publish@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          pack-dir-artifact-id: ${{ needs.pack.outputs.pack-dir-artifact-id }}

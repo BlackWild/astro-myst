@@ -1,0 +1,43 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    # Wait a week before proposing new releases (supply-chain safety).
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 10
+    groups:
+      astro:
+        patterns: ['astro', '@astrojs/*']
+      myst:
+        patterns: ['mystmd']
+      tooling:
+        patterns: ['@biomejs/*', '@changesets/*', 'typescript', 'vitest', '@vitest/*', '@playwright/test', 'publint', '@arethetypeswrong/*', 'pagefind', '@types/*']
+      runtime:
+        patterns: ['hast-util-to-html', 'hastscript', 'shiki', 'katex', 'yaml']
+    ignore:
+      # katex must match the KaTeX version mystmd renders with (0.15.x); see packages/astro-myst/styles/katex.css
+      - dependency-name: katex
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+      # Type definitions follow the oldest supported Node.js major
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+    commit-message:
+      prefix: deps
+      include: scope
+
+  - package-ecosystem: github-actions
+    directories: ['/', '/.github/actions/*']
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ['*']
+    commit-message:
+      prefix: ci

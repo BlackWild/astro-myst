@@ -1,0 +1,6 @@
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ipynb text eol=lf linguist-documentation
+examples/** linguist-documentation
+docs/** linguist-documentation

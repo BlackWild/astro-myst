@@ -53,7 +53,12 @@ export function resolveCommand(opts: Pick<CompileOptions, 'command' | 'resolveFr
       const pkgJsonPath = require.resolve('mystmd/package.json');
       const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
       const bin = typeof pkg.bin === 'string' ? pkg.bin : pkg.bin?.myst;
-      if (bin) return { cmd: process.execPath, args: [path.join(path.dirname(pkgJsonPath), bin)], label: `mystmd@${pkg.version}` };
+      if (bin)
+        return {
+          cmd: process.execPath,
+          args: [path.join(path.dirname(pkgJsonPath), bin)],
+          label: `mystmd@${pkg.version}`,
+        };
     } catch {
       /* try the next location */
     }
@@ -97,7 +102,9 @@ function removeStubTemplate(dir: string) {
 
 const quoteWin = (s: string) => (/[\s"&|<>^]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
 const NOT_FOUND = (cmd: string) =>
-  new Error(`Could not run "${cmd}". Install the "mystmd" npm package (npm i -D mystmd) or set the \`command\` option.`);
+  new Error(
+    `Could not run "${cmd}". Install the "mystmd" npm package (npm i -D mystmd) or set the \`command\` option.`,
+  );
 
 function run(cmd: string, args: string[], cwd: string, logger: MystLogger): Promise<string[]> {
   return new Promise((resolve, reject) => {
@@ -143,8 +150,12 @@ function run(cmd: string, args: string[], cwd: string, logger: MystLogger): Prom
       out.end();
       err.end();
       if (code === 0) resolve(lines);
-      else if (shell && lines.some((l) => /is not recognized as an internal or external command/i.test(l))) reject(NOT_FOUND(cmd));
-      else reject(new Error(`myst build --site failed (exit code ${code})${errors.length ? `:\n${errors.join('\n')}` : ''}`));
+      else if (shell && lines.some((l) => /is not recognized as an internal or external command/i.test(l)))
+        reject(NOT_FOUND(cmd));
+      else
+        reject(
+          new Error(`myst build --site failed (exit code ${code})${errors.length ? `:\n${errors.join('\n')}` : ''}`),
+        );
     });
   });
 }

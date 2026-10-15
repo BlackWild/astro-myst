@@ -53,9 +53,9 @@ describe('compileMystProject (runs the real mystmd)', () => {
     const root = copyFixture('basic');
     const yml = path.join(root, 'myst.yml');
     fs.writeFileSync(yml, fs.readFileSync(yml, 'utf8').replace('site: {}\n', ''));
-    await expect(compileMystProject({ root, resolveFrom: PACKAGE_ROOT, logger: memoryLogger().logger })).rejects.toThrow(
-      /has no `site:` section/,
-    );
+    await expect(
+      compileMystProject({ root, resolveFrom: PACKAGE_ROOT, logger: memoryLogger().logger }),
+    ).rejects.toThrow(/has no `site:` section/);
   });
 
   it('reports a missing executable clearly', async () => {

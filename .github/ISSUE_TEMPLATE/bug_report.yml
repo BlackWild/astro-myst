@@ -1,0 +1,57 @@
+name: Bug report
+description: Something renders wrongly, a build fails, or the docs are wrong.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please check the [troubleshooting page](https://blackwild.github.io/astro-myst/project/troubleshooting) first.
+        If MyST itself renders the content wrongly (also with `myst start`), the issue probably belongs to [mystmd](https://github.com/jupyter-book/mystmd/issues).
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: How to reproduce
+      description: A minimal MyST snippet, `myst.yml` and loader options — or a link to a repository or StackBlitz.
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log output
+      description: Warnings and errors from `astro build` / `astro dev`.
+      render: text
+  - type: input
+    id: astro-myst
+    attributes:
+      label: astro-myst version
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: astro
+    attributes:
+      label: Astro version
+      placeholder: 7.3.8
+    validations:
+      required: true
+  - type: input
+    id: mystmd
+    attributes:
+      label: mystmd version
+      description: Output of `npx myst --version`
+      placeholder: 1.11.0
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Node.js version and operating system
+      placeholder: Node 24.11, macOS 26

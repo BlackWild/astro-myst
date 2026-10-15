@@ -2,15 +2,53 @@
   "name": "astro-myst-monorepo",
   "private": true,
   "type": "module",
+  "description": "Monorepo for astro-myst: MyST Markdown for Astro, its documentation site and examples.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackWild/astro-myst.git"
+  },
   "workspaces": [
     "packages/*",
-    "examples/*"
+    "examples/*",
+    "docs"
   ],
   "scripts": {
     "build": "npm run build -w astro-myst",
+    "dev": "npm run build -w astro-myst -- --watch",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "tsc -p tsconfig.json && npm run typecheck --workspaces --if-present",
     "test": "npm test -w astro-myst",
-    "typecheck": "npm run typecheck -w astro-myst",
-    "example:dev": "npm run dev -w astro-myst-example-book",
-    "example:build": "npm run build -w astro-myst-example-book"
+    "test:coverage": "npm run test:coverage -w astro-myst",
+    "test:e2e": "playwright test",
+    "check:package": "npm run check:package -w astro-myst",
+    "docs:dev": "npm run dev -w astro-myst-docs",
+    "docs:build": "npm run build -w astro-myst-docs",
+    "examples:build": "npm run build -w astro-myst-example-minimal -w astro-myst-example-book -w astro-myst-example-paper",
+    "changeset": "changeset",
+    "version-packages": "changeset version && node packages/astro-myst/scripts/sync-version.mjs && npm install --package-lock-only --ignore-scripts --no-audit --no-fund",
+    "release": "npm run build && changeset publish"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@changesets/changelog-github": "^1.0.1",
+    "@changesets/cli": "^3.0.3",
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^22.19.0",
+    "typescript": "^6.0.3"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=22.12.0",
+      "onFail": "error"
+    },
+    "packageManager": {
+      "name": "npm",
+      "version": ">=10.9.0",
+      "onFail": "warn"
+    }
   }
 }

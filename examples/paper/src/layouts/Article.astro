@@ -1,0 +1,45 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import XrefPreview from 'astro-myst/XrefPreview.astro';
+import 'astro-myst/katex.css';
+import 'astro-myst/styles.css';
+import '../styles/article.css';
+
+interface Props {
+  page: CollectionEntry<'paper'>;
+  pages: CollectionEntry<'paper'>[];
+}
+
+const { page, pages } = Astro.props;
+const { data } = page;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href={`${import.meta.env.BASE_URL.replace(/\/?$/, '/')}favicon.svg`} type="image/svg+xml" />
+    <title>{data.title}</title>
+  </head>
+  <body>
+    <nav class="tabs" aria-label="Article parts">
+      {
+        pages.map((p) => (
+          <a href={p.data.url} aria-current={p.id === page.id ? 'page' : undefined}>
+            {p.data.isIndex ? 'Article' : p.data.title}
+          </a>
+        ))
+      }
+    </nav>
+    <article class="myst">
+      <header>
+        <h1>{data.title}</h1>
+        {data.authors.length > 0 && <p class="authors">{data.authors.map((a) => a.name).join(', ')}</p>}
+        <p class="source">Source: <code>{data.source}</code></p>
+      </header>
+      <slot />
+    </article>
+    <XrefPreview />
+  </body>
+</html>

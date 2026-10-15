@@ -3,7 +3,10 @@
 export type TrailingSlash = 'always' | 'never' | 'ignore';
 
 export function joinUrl(...parts: string[]): string {
-  const joined = parts.filter((p) => p !== '').join('/').replace(/\/{2,}/g, '/');
+  const joined = parts
+    .filter((p) => p !== '')
+    .join('/')
+    .replace(/\/{2,}/g, '/');
   return joined.startsWith('/') ? joined : `/${joined}`;
 }
 

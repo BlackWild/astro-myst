@@ -1,0 +1,27 @@
+name: Setup
+description: Set up Node.js and install dependencies with npm ci.
+
+inputs:
+  node-version:
+    description: Node.js version (defaults to the version in .node-version)
+    required: false
+    default: ''
+  cache:
+    description: Cache the npm download cache. Disable in release jobs to avoid cache poisoning.
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        node-version-file: ${{ inputs.node-version == '' && '.node-version' || '' }}
+        cache: ${{ inputs.cache == 'true' && 'npm' || '' }}
+        package-manager-cache: ${{ inputs.cache == 'true' }}
+
+    - name: Install dependencies
+      shell: bash
+      run: npm ci --no-audit --no-fund

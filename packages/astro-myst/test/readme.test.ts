@@ -1,6 +1,6 @@
 // Keeps the README's custom-handler example type-correct and working.
 import { describe, expect, it } from 'vitest';
-import { mystLoader, renderMystPage, type MystNodeHandler } from '../src/index.js';
+import { type MystNodeHandler, mystLoader, renderMystPage } from '../src/index.js';
 
 const admonition: MystNodeHandler = (node, ctx) => {
   if (node.kind !== 'tip') return undefined; // undefined → use the built-in renderer
@@ -21,7 +21,13 @@ describe('README examples', () => {
         slug: 'x',
         location: '/x.md',
         frontmatter: {},
-        mdast: { type: 'root', children: [{ type: 'admonition', kind: 'tip', children: [] }, { type: 'myWidget', data: { a: 1 } }] },
+        mdast: {
+          type: 'root',
+          children: [
+            { type: 'admonition', kind: 'tip', children: [] },
+            { type: 'myWidget', data: { a: 1 } },
+          ],
+        },
       },
       { resolvePageUrl: () => undefined, resolveAssetUrl: (u) => u, handlers },
     );

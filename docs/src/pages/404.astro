@@ -1,0 +1,23 @@
+---
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Page not found · astro-myst</title>
+    <style>
+      body { font-family: system-ui, sans-serif; display: grid; place-items: center; min-height: 90vh; margin: 0; }
+      main { text-align: center; }
+      a { color: #1f5f8b; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Page not found</h1>
+      <p><a href={base}>Back to the astro-myst documentation</a></p>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,36 @@
+---
+/**
+ * Full-text search with Pagefind. The index is generated after `astro build`
+ * (`pagefind --site dist`), so search is only available in the built site.
+ */
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+---
+
+<div class="search" id="search" data-bundle={`${base}pagefind/`}>
+  <noscript>Search needs JavaScript.</noscript>
+</div>
+
+<script>
+  const container = document.getElementById('search');
+  const bundle = container?.dataset.bundle ?? '/pagefind/';
+
+  function loadPagefind() {
+    if (!container) return;
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = `${bundle}pagefind-ui.css`;
+    document.head.append(css);
+    const script = document.createElement('script');
+    script.src = `${bundle}pagefind-ui.js`;
+    script.onload = () => {
+      // @ts-expect-error PagefindUI is defined by the script loaded above
+      new window.PagefindUI({ element: '#search', showSubResults: true, showImages: false, resetStyles: false });
+    };
+    script.onerror = () => {
+      container.innerHTML = '<span class="search-unavailable">Search is available in the built site.</span>';
+    };
+    document.head.append(script);
+  }
+
+  loadPagefind();
+</script>

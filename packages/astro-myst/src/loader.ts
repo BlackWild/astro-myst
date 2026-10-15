@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import type { Loader, LoaderContext } from 'astro/loaders';
 import { z } from 'astro/zod';
 import { compileMystProject, readMystBuild, resolveCommand } from './compile.js';
-import { renderMystPage, type MarkdownHeading, type MystNodeHandler } from './render.js';
+import { type MarkdownHeading, type MystNodeHandler, renderMystPage } from './render.js';
 import type { MystBuild, MystPageJson } from './types.js';
 import { assetUrl, pageUrl, slugToMystUrl, slugToPath, type TrailingSlash } from './urls.js';
 import { VERSION } from './version.js';
@@ -96,7 +96,15 @@ export type MystPageData = z.infer<typeof mystPageSchema>;
 /** Frontmatter strings, with empty values (e.g. from an unsupported LaTeX macro) treated as missing. */
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() ? v : undefined);
 
-const IGNORED_NAMES = new Set(['_build', 'node_modules', '.git', '.astro', '.ipynb_checkpoints', '__pycache__', '.venv']);
+const IGNORED_NAMES = new Set([
+  '_build',
+  'node_modules',
+  '.git',
+  '.astro',
+  '.ipynb_checkpoints',
+  '__pycache__',
+  '.venv',
+]);
 
 const isInside = (child: string, parent: string) => {
   const rel = path.relative(parent, child);
@@ -133,7 +141,8 @@ function resolveAssetsDir(publicDir: string, assetsDir: string): { dir: string; 
     throw new Error(`[astro-myst] Invalid assetsDir "${assetsDir}": use a sub-folder name such as "_myst".`);
   }
   const dir = path.join(publicDir, ...parts);
-  if (!isInside(dir, publicDir) || dir === publicDir) throw new Error(`[astro-myst] assetsDir must be inside public/: "${assetsDir}"`);
+  if (!isInside(dir, publicDir) || dir === publicDir)
+    throw new Error(`[astro-myst] assetsDir must be inside public/: "${assetsDir}"`);
   return { dir, urlPath: parts.join('/') };
 }
 
@@ -174,14 +183,24 @@ export function mystLoader(options: MystLoaderOptions) {
       const resolveAsset = (u: string) => assetUrl(urlOpts, u);
       const inputs = [mystRoot, ...(options.extraInputs ?? []).map((p) => path.resolve(astroRoot, p))];
       // Never treat Astro's own folders (or our asset copies) as MyST sources.
-      const excluded = [publicDir, fileURLToPath(config.outDir), fileURLToPath(config.cacheDir), path.join(astroRoot, '.astro'), path.join(astroRoot, 'node_modules')]
-        .filter((dir) => !isInside(mystRoot, dir)); // never exclude a folder that contains the MyST project itself
+      const excluded = [
+        publicDir,
+        fileURLToPath(config.outDir),
+        fileURLToPath(config.cacheDir),
+        path.join(astroRoot, '.astro'),
+        path.join(astroRoot, 'node_modules'),
+      ].filter((dir) => !isInside(mystRoot, dir)); // never exclude a folder that contains the MyST project itself
       // `myst build --doi-bib` rewrites myst.doi.bib on every build: not an input, or dev would loop.
       if (options.mystArgs?.includes('--doi-bib')) excluded.push(path.join(mystRoot, 'myst.doi.bib'));
 
       const compileOrReuse = async (force: boolean): Promise<MystBuild> => {
         const { label } = resolveCommand({ root: mystRoot, resolveFrom: astroRoot, command: options.command });
-        const key = fingerprint(inputs, excluded, { v: VERSION, label, args: options.mystArgs ?? [], command: options.command });
+        const key = fingerprint(inputs, excluded, {
+          v: VERSION,
+          label,
+          args: options.mystArgs ?? [],
+          command: options.command,
+        });
         const hasOutput = fs.existsSync(path.join(mystRoot, '_build', 'site', 'config.json'));
         if (options.cache !== false && !force && hasOutput && meta.get('source-fingerprint') === key) {
           logger.info('MyST sources unchanged; reusing the previous mystmd build');
@@ -203,13 +222,22 @@ export function mystLoader(options: MystLoaderOptions) {
         const projects: any[] = build.config.projects ?? [];
         const project = options.project ? projects.find((p) => p.slug === options.project) : projects[0];
         if (!project) {
-          throw new Error(options.project ? `No MyST project with slug "${options.project}" (found: ${projects.map((p) => p.slug).join(', ')})` : 'The MyST site has no projects');
+          throw new Error(
+            options.project
+              ? `No MyST project with slug "${options.project}" (found: ${projects.map((p) => p.slug).join(', ')})`
+              : 'The MyST site has no projects',
+          );
         }
         if (projects.length > 1 && !options.project) {
-          logger.warn(`The MyST site has ${projects.length} projects; loading "${project.slug}". Use the \`project\` option to choose.`);
+          logger.warn(
+            `The MyST site has ${projects.length} projects; loading "${project.slug}". Use the \`project\` option to choose.`,
+          );
         }
         const projectSlug: string | undefined = project.slug;
-        const projectDir = projectSlug && build.projectPaths[projectSlug] ? path.join(mystRoot, build.projectPaths[projectSlug]) : mystRoot;
+        const projectDir =
+          projectSlug && build.projectPaths[projectSlug]
+            ? path.join(mystRoot, build.projectPaths[projectSlug])
+            : mystRoot;
         const indexSlug: string = project.index ?? 'index';
         const tocPages: any[] = [{ slug: indexSlug, level: 1 }, ...(project.pages ?? []).filter((p: any) => p.slug)];
         const toc = new Map(tocPages.map((p, i) => [p.slug as string, { ...p, order: i }]));
@@ -271,7 +299,10 @@ export function mystLoader(options: MystLoaderOptions) {
               date: fm.date,
               tags: fm.tags,
               keywords: fm.keywords,
-              authors: (fm.authors ?? []).map((a: any) => ({ ...a, affiliations: (a.affiliations ?? []).map(affiliationName) })),
+              authors: (fm.authors ?? []).map((a: any) => ({
+                ...a,
+                affiliations: (a.affiliations ?? []).map(affiliationName),
+              })),
               thumbnail: fm.thumbnail ? resolveAsset(fm.thumbnail) : undefined,
               path: routePath,
               url: pageUrl(urlOpts, routePath),
@@ -315,14 +346,20 @@ export function mystLoader(options: MystLoaderOptions) {
 
       // Dev server: recompile when anything in the MyST project (or extraInputs) changes.
       if (watcher) {
-        inputs.forEach((p) => watcher.add(p));
+        for (const input of inputs) watcher.add(input);
         let timer: ReturnType<typeof setTimeout> | undefined;
         let queue: Promise<void> = Promise.resolve();
         watcher.on('all', (_event, file) => {
           const full = path.resolve(file);
           if (!inputs.some((p) => isInside(full, p))) return;
           if (excluded.some((dir) => isInside(full, dir))) return;
-          if (path.relative(mystRoot, full).split(/[\\/]/).some((part) => IGNORED_NAMES.has(part))) return;
+          if (
+            path
+              .relative(mystRoot, full)
+              .split(/[\\/]/)
+              .some((part) => IGNORED_NAMES.has(part))
+          )
+            return;
           clearTimeout(timer);
           timer = setTimeout(() => {
             queue = queue

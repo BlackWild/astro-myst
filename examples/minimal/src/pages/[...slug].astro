@@ -1,0 +1,34 @@
+---
+import { getCollection, render } from 'astro:content';
+import XrefPreview from 'astro-myst/XrefPreview.astro';
+import 'astro-myst/katex.css';
+import 'astro-myst/styles.css';
+
+export async function getStaticPaths() {
+  const pages = await getCollection('docs');
+  return pages.map((page) => ({ params: { slug: page.data.path || undefined }, props: { page } }));
+}
+
+const { page } = Astro.props;
+const { Content } = await render(page);
+const nav = (await getCollection('docs')).sort((a, b) => a.data.order - b.data.order);
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href={`${import.meta.env.BASE_URL.replace(/\/?$/, '/')}favicon.svg`} type="image/svg+xml" />
+    <title>{page.data.title}</title>
+  </head>
+  <body style="max-width: 46rem; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, sans-serif; line-height: 1.6">
+    <nav>
+      {nav.map((p, i) => <>{i > 0 && ' · '}<a href={p.data.url}>{p.data.title}</a></>)}
+    </nav>
+    <article class="myst">
+      <h1>{page.data.title}</h1>
+      <Content />
+    </article>
+    <XrefPreview />
+  </body>
+</html>

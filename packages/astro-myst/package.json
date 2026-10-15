@@ -1,7 +1,7 @@
 {
   "name": "astro-myst",
   "version": "0.1.0",
-  "description": "MyST Markdown for Astro: a content loader powered by the official mystmd compiler, with numbered figures, equations and sections, cross-references across pages, citations, math and notebooks.",
+  "description": "MyST Markdown for Astro: a content loader powered by the official mystmd compiler, with numbered figures, equations and sections, cross-references across pages, citations, math, LaTeX sources and notebooks.",
   "keywords": [
     "astro",
     "withastro",
@@ -14,10 +14,25 @@
     "markdown",
     "scientific-writing",
     "cross-references",
-    "katex"
+    "katex",
+    "latex",
+    "citations",
+    "doi"
   ],
+  "homepage": "https://blackwild.github.io/astro-myst/",
+  "bugs": {
+    "url": "https://github.com/BlackWild/astro-myst/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackWild/astro-myst.git",
+    "directory": "packages/astro-myst"
+  },
   "license": "MIT",
-  "author": "Siavash Davani",
+  "author": {
+    "name": "Siavash Davani",
+    "url": "https://sdavani.com"
+  },
   "type": "module",
   "sideEffects": [
     "*.css",
@@ -45,13 +60,17 @@
     "LICENSE"
   ],
   "engines": {
-    "node": ">=18.20.8"
+    "node": ">=22.12.0"
   },
   "scripts": {
+    "prebuild": "node scripts/sync-version.mjs",
     "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "prepublishOnly": "npm run build && npm run typecheck && npm test"
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "check:package": "publint --strict && attw --pack . --profile esm-only --exclude-entrypoints ./styles.css ./katex.css ./XrefPreview.astro",
+    "prepack": "npm run build"
   },
   "peerDependencies": {
     "astro": "^5.0.0 || ^6.0.0 || ^7.0.0",
@@ -70,15 +89,17 @@
     "yaml": "^2.8.1"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
     "@types/hast": "^3.0.4",
     "@types/node": "^22.19.0",
+    "@vitest/coverage-v8": "^5.0.4",
     "astro": "^7.3.8",
     "mystmd": "^1.11.0",
+    "publint": "^0.3.25",
     "typescript": "^6.0.3",
     "vitest": "^5.0.4"
   },
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   }
 }

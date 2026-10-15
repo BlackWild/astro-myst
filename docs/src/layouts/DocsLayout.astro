@@ -1,0 +1,159 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import type { MarkdownHeading } from 'astro';
+import { VERSION } from 'astro-myst';
+import XrefPreview from 'astro-myst/XrefPreview.astro';
+import Search from '../components/Search.astro';
+import 'astro-myst/katex.css';
+import 'astro-myst/styles.css';
+import '../styles/docs.css';
+
+type Page = CollectionEntry<'docs'>;
+
+interface Props {
+  page: Page;
+  nav: Page[];
+  headings: MarkdownHeading[];
+}
+
+const { page, nav, headings } = Astro.props;
+const { data } = page;
+const repo = 'https://github.com/BlackWild/astro-myst';
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+
+// Sidebar sections follow the folders of the MyST project (site.options.folders).
+const SECTIONS: Record<string, string> = {
+  '': 'Start here',
+  guides: 'Guides',
+  reference: 'Reference',
+  explanation: 'Explanation',
+  project: 'Project',
+};
+const sectionOf = (p: Page) =>
+  p.data.path.includes('/') ? p.data.path.split('/')[0] : (p.data.frontmatter.section ?? '');
+const groups = Object.entries(SECTIONS)
+  .map(([key, title]) => ({ key, title, pages: nav.filter((p) => sectionOf(p) === key) }))
+  .filter((g) => g.pages.length > 0);
+
+const index = nav.findIndex((p) => p.id === page.id);
+const prev = nav[index - 1];
+const next = nav[index + 1];
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+const label = (p: Page) => p.data.short_title || p.data.title;
+const pageTitle = data.isIndex ? 'astro-myst: MyST Markdown for Astro' : `${data.title} · astro-myst`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={data.description ?? data.subtitle ?? 'MyST Markdown for Astro'} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:type" content="website" />
+    {Astro.site && <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />}
+    <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+    <meta name="generator" content={Astro.generator} />
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+    <header class="topbar">
+      <a class="brand" href={base}>
+        <img src={`${base}favicon.svg`} alt="" width="26" height="26" />
+        <span>astro-myst</span>
+        <span class="version">v{VERSION}</span>
+      </a>
+      <Search />
+      <nav class="topnav" aria-label="Project links">
+        <a href={`${repo}/tree/main/examples`}>Examples</a>
+        <a href="https://www.npmjs.com/package/astro-myst">npm</a>
+        <a href={repo}>GitHub</a>
+      </nav>
+    </header>
+
+    <div class="shell">
+      <details class="sidebar-toggle">
+        <summary>Menu</summary>
+      </details>
+      <nav class="sidebar" aria-label="Documentation">
+        {
+          groups.map((g) => (
+            <section>
+              <h2>{g.title}</h2>
+              <ul>
+                {g.pages.map((p) => (
+                  <li>
+                    <a href={p.data.url} aria-current={p.id === page.id ? 'page' : undefined}>
+                      {label(p)}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
+        }
+      </nav>
+
+      <main id="content">
+        <article class="myst" data-pagefind-body>
+          <header class="page-header">
+            <h1>{data.title}</h1>
+            {data.subtitle && <p class="subtitle">{data.subtitle}</p>}
+          </header>
+          <slot />
+        </article>
+
+        <footer class="page-footer">
+          <a class="edit" href={`${repo}/edit/main/docs/content/${data.source}`}>Edit this page on GitHub</a>
+          <nav class="pager" aria-label="Previous and next page">
+            {
+              prev ? (
+                <a class="prev" href={prev.data.url}>
+                  <span>Previous</span>
+                  {label(prev)}
+                </a>
+              ) : (
+                <span />
+              )
+            }
+            {
+              next && (
+                <a class="next" href={next.data.url}>
+                  <span>Next</span>
+                  {label(next)}
+                </a>
+              )
+            }
+          </nav>
+          <p class="colophon">
+            This site is written in MyST Markdown and rendered by astro-myst. MIT licensed.
+          </p>
+        </footer>
+      </main>
+
+      <aside class="outline" aria-label="On this page">
+        {
+          toc.length > 0 && (
+            <>
+              <h2>On this page</h2>
+              <ul>
+                {toc.map((h) => (
+                  <li class={`depth-${h.depth}`}>
+                    <a href={`#${h.slug}`}>{h.text}</a>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )
+        }
+      </aside>
+    </div>
+    <XrefPreview />
+    <script>
+      // The mobile "Menu" toggle shows and hides the sidebar.
+      const toggle = document.querySelector<HTMLDetailsElement>('.sidebar-toggle');
+      toggle?.addEventListener('toggle', () => document.body.classList.toggle('nav-open', toggle.open));
+    </script>
+  </body>
+</html>
