@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{amsmath,amsthm,graphicx,siunitx}
+\newtheorem{theorem}{Theorem}
+\newcommand{\project}{Astro-MyST}
+
+\title{Paper in TeX}
+\author{Ada Lovelace}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+An abstract written in TeX.
+\end{abstract}
+
+\section{Introduction}\label{sec:intro}
+
+As shown in Figure~\ref{fig-md} of the notes and in \cite{knuth1984},
+\begin{equation}
+  E = mc^2 \label{eq:main}
+\end{equation}
+and
+\begin{align}
+  a &= b \label{eq:a} \\
+  c &= d
+\end{align}
+
+\begin{theorem}\label{thm:tex}
+Every TeX theorem in \project{} gets a number \citep{knuth1984}.
+\end{theorem}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.3\textwidth]{dot.svg}
+  \caption{A dot from TeX.}
+  \label{fig:tex}
+\end{figure}
+
+See Eq.~\eqref{eq:main}, Figure~\ref{fig:tex}, Theorem~\ref{thm:tex}, Section~\ref{sec:methods}.\footnote{TeX footnote.}
+
+\input{methods}
+
+\end{document}

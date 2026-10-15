@@ -4,8 +4,9 @@
 
 - automatic numbering of sections, figures, sub-figures, tables, equations, code listings, theorems, …
 - cross-references that resolve **across pages** (`@fig-signal`, `{eq}`, `{numref}`, `[](#label)`)
-- citations from BibTeX/DOIs with a per-page bibliography, footnotes
+- citations from BibTeX or straight from DOIs (`<doi:…>`, fetched from doi.org), with a per-page bibliography; footnotes
 - math (KaTeX, with project-wide macros), admonitions, dropdowns, tabs, grids, cards, proofs/theorems, exercises
+- LaTeX documents (`.tex`) as pages, with the same numbering and cross-references ([details](#latex-sources))
 - Jupyter notebooks (`.ipynb`) with their outputs and cell tags (`remove-input`, `hide-output`, …), `{include}`, `{embed}`, glossaries, abbreviations, …
 - hover previews of referenced content, like the MyST book theme
 
@@ -97,6 +98,27 @@ Requirements: Astro 5, 6 or 7, mystmd 1.3 or newer (tested with 1.3, 1.6, 1.8 an
 
 `astro dev` recompiles the MyST project whenever a file in it changes, and numbering and references update on every page.
 
+## LaTeX sources
+
+`.tex` files work as pages too, because mystmd parses LaTeX into the same AST as MyST Markdown. List them in the `toc` of `myst.yml` (without an explicit `toc`, MyST turns every `.tex` file into a page, including fragments you only `\input`) and they get the same treatment: `\section` numbering, `\label`/`\ref`/`\eqref` (also to and from Markdown pages; labels with colons such as `eq:main` are fine), numbered `equation`/`align`, `figure` and `table` environments, `\newtheorem` environments, `\cite`/`\citet`/`\citep` with your `.bib`, `\footnote`, `\input`, `siunitx`, simple `\newcommand` macros, `\title`/`\author` as page metadata and `\begin{abstract}` as an abstract section. You can also `{include}` a `.tex` snippet from a Markdown page.
+
+```yaml
+project:
+  toc:
+    - file: index.md
+    - file: paper.tex
+```
+
+The LaTeX support is mystmd's own ([supported packages and macros](https://mystmd.org/guide/writing-in-latex)), so its limits apply: it is not a full TeX engine, unsupported macros are dropped (mystmd reports each one with file, line and column, and astro-myst shows these in the Astro log), an `align` block gets a single equation number (for its first `\label`), and optional theorem titles such as `\begin{theorem}[Name]` are not carried over.
+
+## Citations and DOIs
+
+Everything MyST supports for citations works, because mystmd resolves them before astro-myst renders the page: BibTeX keys (`{cite:p}\`key\``, `[@key]`, `@key`) and DOIs written as `<doi:10.5281/zenodo.6476040>`, `[](doi:…)`, `https://doi.org/…` links, `{cite:t}\`10.…\`` or `[@10.…]`. A DOI that matches an entry in your `.bib` files uses that entry; any other DOI is downloaded from doi.org during the build. Each page gets a bibliography of what it cites, and the citation links point to it (and get hover previews with `XrefPreview`).
+
+- Downloads are cached in `<root>/_build/cache`, so only the first build fetches them. A clean checkout (e.g. CI) fetches again; to avoid that, run `npx myst build --doi-bib` once in the MyST project and commit the generated `myst.doi.bib` (add it to `bibliography:` if you list files there explicitly).
+- A DOI that cannot be resolved (offline, typo, doi.org down) is reported in the Astro log with file and line, and stays a plain doi.org link; the build continues unless you pass `mystArgs: ['--strict']`.
+- Numbered citations (`[1]`, `[2, 3]`) instead of author–year: set `site.options.numbered_references: true` in myst.yml, or the loader option `numberedReferences: true`.
+
 ## Options
 
 ```ts
@@ -112,6 +134,7 @@ mystLoader({
   handlers: {},               // custom renderers per MyST node type (see below)
   bibliographyTitle: 'References',
   footnotesTitle: 'Footnotes',
+  numberedReferences: false,  // [1]-style citations; default from myst.yml site.options.numbered_references
   extraInputs: [],            // files/folders outside `root` the project reads (e.g. `{include} ../README.md`)
   project: undefined,         // multi-project sites (`site.projects`): slug of the project to load
 });

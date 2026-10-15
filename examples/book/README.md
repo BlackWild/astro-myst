@@ -1,6 +1,6 @@
 # astro-myst example: a small book
 
-`content/` is an ordinary MyST project (`myst.yml`, Markdown pages, a notebook, a BibTeX file). `src/content.config.ts` loads it with `mystLoader`, and `src/pages/[...slug].astro` + `src/layouts/BookLayout.astro` render it with a sidebar, an "on this page" outline, prev/next links and hover previews.
+`content/` is an ordinary MyST project (`myst.yml`, Markdown pages, a LaTeX page `derivation.tex`, a notebook, a BibTeX file). `src/content.config.ts` loads it with `mystLoader`, and `src/pages/[...slug].astro` + `src/layouts/BookLayout.astro` render it with a sidebar, an "on this page" outline, prev/next links and hover previews.
 
 ```sh
 npm install        # from the repository root

@@ -18,7 +18,7 @@ const { page, nav, headings, prev, next } = Astro.props;
 const { data } = page;
 const projectTitle = data.projectTitle ?? 'MyST';
 const navTitle = (p: CollectionEntry<'book'>) =>
-  `${p.data.enumerator ? `${p.data.enumerator} ` : ''}${p.data.short_title ?? p.data.title}`;
+  `${p.data.enumerator ? `${p.data.enumerator} ` : ''}${p.data.short_title || p.data.title}`;
 const toc = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
 const current = Astro.url.pathname.replace(/\/$/, '') || '/';
 ---

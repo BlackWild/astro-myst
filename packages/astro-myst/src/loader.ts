@@ -44,6 +44,8 @@ export interface MystLoaderOptions {
    * dev and part of the cache key.
    */
   extraInputs?: string[];
+  /** Numbered citations ("[1]") instead of author–year. Default: myst.yml `site.options.numbered_references`. */
+  numberedReferences?: boolean;
   /** For multi-project MyST sites (`site.projects` in myst.yml): slug of the project to load. Default: the first. */
   project?: string;
 }
@@ -90,6 +92,9 @@ export const mystPageSchema = z.object({
 });
 
 export type MystPageData = z.infer<typeof mystPageSchema>;
+
+/** Frontmatter strings, with empty values (e.g. from an unsupported LaTeX macro) treated as missing. */
+const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() ? v : undefined);
 
 const IGNORED_NAMES = new Set(['_build', 'node_modules', '.git', '.astro', '.ipynb_checkpoints', '__pycache__', '.venv']);
 
@@ -171,6 +176,8 @@ export function mystLoader(options: MystLoaderOptions) {
       // Never treat Astro's own folders (or our asset copies) as MyST sources.
       const excluded = [publicDir, fileURLToPath(config.outDir), fileURLToPath(config.cacheDir), path.join(astroRoot, '.astro'), path.join(astroRoot, 'node_modules')]
         .filter((dir) => !isInside(mystRoot, dir)); // never exclude a folder that contains the MyST project itself
+      // `myst build --doi-bib` rewrites myst.doi.bib on every build: not an input, or dev would loop.
+      if (options.mystArgs?.includes('--doi-bib')) excluded.push(path.join(mystRoot, 'myst.doi.bib'));
 
       const compileOrReuse = async (force: boolean): Promise<MystBuild> => {
         const { label } = resolveCommand({ root: mystRoot, resolveFrom: astroRoot, command: options.command });
@@ -247,6 +254,7 @@ export function mystLoader(options: MystLoaderOptions) {
             readAsset,
             codeThemes: options.codeThemes,
             handlers: options.handlers,
+            numberedReferences: options.numberedReferences ?? Boolean(build.siteOptions?.numbered_references),
             bibliographyTitle: options.bibliographyTitle,
             footnotesTitle: options.footnotesTitle,
           });
@@ -255,10 +263,10 @@ export function mystLoader(options: MystLoaderOptions) {
           const data = await parseData({
             id: slug,
             data: {
-              title: fm.title ?? slug,
-              subtitle: fm.subtitle,
-              short_title: fm.short_title,
-              description: fm.description,
+              title: str(fm.title) ?? slug,
+              subtitle: str(fm.subtitle),
+              short_title: str(fm.short_title),
+              description: str(fm.description),
               enumerator: fm.enumerator ?? entry.enumerator,
               date: fm.date,
               tags: fm.tags,

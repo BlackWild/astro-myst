@@ -237,6 +237,8 @@ export function readMystBuild(root: string, logger: MystLogger, label = 'myst'):
     pages,
     publicDir: path.join(siteDir, 'public'),
     projectPaths,
+    // config.json only keeps options declared by a MyST theme, so read them from myst.yml.
+    siteOptions: readMystYml(root).site?.options ?? {},
     xref: fs.existsSync(xrefPath) ? readJson(xrefPath) : undefined,
   };
 }

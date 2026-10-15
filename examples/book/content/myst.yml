@@ -27,6 +27,7 @@ project:
       children:
         - file: oscillator.md
     - file: results.md
+    - file: derivation.tex
     - file: notebook.ipynb
     - file: appendix.md
 site:

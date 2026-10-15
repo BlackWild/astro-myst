@@ -179,4 +179,14 @@ describe('mystLoader', () => {
     await new Promise((r) => setTimeout(r, 400));
     expect(count((m) => m.msg.includes('recompiling'))).toBe(recompiles);
   });
+
+  it('picks up numbered citations from myst.yml site options', async () => {
+    const site = fs.mkdtempSync(path.join(os.tmpdir(), 'astro-myst-site-'));
+    fs.cpSync(copyFixture('basic'), path.join(site, 'content'), { recursive: true });
+    const yml = path.join(site, 'content', 'myst.yml');
+    fs.writeFileSync(yml, fs.readFileSync(yml, 'utf8').replace('site: {}', 'site:\n  options:\n    numbered_references: true'));
+    const { ctx, entries } = fakeContext(site, path.join(site, 'public'));
+    await mystLoader({ root: './content' }).load(ctx);
+    expect(entries.get('index').rendered.html).toContain('<span class="cite-group">[<a class="cite" href="#cite-knuth1984" data-cite="knuth1984">1</a>]</span>');
+  });
 });

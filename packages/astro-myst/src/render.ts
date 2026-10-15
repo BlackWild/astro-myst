@@ -60,6 +60,8 @@ export interface RenderOptions {
   codeThemes?: { light: string; dark: string } | false;
   /** Per-node-type overrides, e.g. for custom directives from MyST plugins. */
   handlers?: Record<string, MystNodeHandler>;
+  /** Numbered citations ("[1]") instead of author–year. The loader defaults this to myst.yml `site.options.numbered_references`. */
+  numberedReferences?: boolean;
   /** Heading for the bibliography section. Default: "References". */
   bibliographyTitle?: string;
   /** Heading for the footnotes section. Default: "Footnotes". */
@@ -88,6 +90,20 @@ const raw = (value: string): RawNode => ({ type: 'raw', value });
 const text = (value: string): HastChild => ({ type: 'text', value });
 const cap = (s = '') => s.charAt(0).toUpperCase() + s.slice(1);
 const cls = (...names: unknown[]) => names.filter((n) => typeof n === 'string' && n).join(' ') || undefined;
+const PART_TITLES: Record<string, string> = {
+  abstract: 'Abstract',
+  summary: 'Summary',
+  keypoints: 'Key points',
+  acknowledgments: 'Acknowledgments',
+  acknowledgements: 'Acknowledgements',
+  data_availability: 'Data availability',
+  availability: 'Availability',
+};
+/**
+ * Element id of a bibliography entry. Labels can be BibTeX keys ("knuth1984") or, for
+ * citations fetched from doi.org, URLs ("https://doi.org/10.5281/zenodo.6476040").
+ */
+export const citeId = (label: string) => `cite-${label.replace(/^https?:\/\/(dx\.)?doi\.org\//i, 'doi-').replace(/[^\w.-]+/g, '-')}`;
 const LANG_ALIASES: Record<string, string> = { ipython3: 'python', ipython: 'python', python3: 'python', 'c++': 'cpp' };
 
 function toText(node: MystNode): string {
@@ -199,6 +215,17 @@ class MystRenderer {
       case 'embed':
         return kids();
       case 'block': {
+        // Document parts: `\begin{abstract}` in LaTeX, `+++ {"part": "abstract"}` in MyST.
+        const part = typeof n.data?.part === 'string' ? n.data.part : undefined;
+        if (part) {
+          const title = PART_TITLES[part.toLowerCase()] ?? cap(part.replace(/[_-]+/g, ' '));
+          return [
+            this.el('section', { id: n.label ? id : undefined, class: cls('myst-part', `myst-part-${part.toLowerCase()}`, n.class), dataPart: part }, [
+              this.el('h2', { class: 'part-title' }, title),
+              ...kids(),
+            ]),
+          ];
+        }
         // `+++` blocks and notebook cells; keep a wrapper only when it carries meaning.
         const isCell = typeof n.kind === 'string' && n.kind.startsWith('notebook-code');
         if (!n.class && !n.label && !isCell) return kids();
@@ -307,16 +334,27 @@ class MystRenderer {
         ];
       }
       case 'citeGroup': {
-        const sep = n.kind === 'narrative' ? ', ' : '; ';
+        const numbered = this.opts.numberedReferences && n.kind === 'parenthetical';
+        const sep = numbered || n.kind === 'narrative' ? ', ' : '; ';
         const inner = (n.children ?? []).flatMap((c, i) => [...(i ? [text(sep)] : []), ...this.one(c, n)]);
-        return [this.el('span', { class: 'cite-group' }, n.kind === 'parenthetical' ? [text('('), ...inner, text(')')] : inner)];
+        const [open, close] = numbered ? ['[', ']'] : ['(', ')'];
+        return [this.el('span', { class: 'cite-group' }, n.kind === 'parenthetical' ? [text(open), ...inner, text(close)] : inner)];
       }
       case 'cite': {
         const label: string = n.label ?? n.identifier;
-        const content = n.children?.length ? kids() : [text(label)];
+        let content = n.children?.length ? kids() : [text(label)];
         if (n.error) return [this.el('span', { class: 'cite cite-error', title: `Citation not found: ${label}` }, content)];
-        const inner = parent?.type !== 'citeGroup' && n.kind === 'parenthetical' ? [text('('), ...content, text(')')] : content;
-        return [this.el('a', { class: 'cite', href: `#cite-${label}`, dataCite: label }, inner)];
+        const inGroup = parent?.type === 'citeGroup';
+        const num = this.opts.numberedReferences ? (n.enumerator ?? this.page.references?.cite?.data[label]?.enumerator) : undefined;
+        if (num) {
+          // Numbered style: "[3]" in parentheses, "Knuth [3]" in running text.
+          const narrative = n.kind === 'narrative' || parent?.kind === 'narrative';
+          const authors = toText(n).replace(/\s*\(\d{4}[a-z]?\)\s*$/, '');
+          content = narrative ? [text(`${authors} [${num}]`)] : [text(inGroup ? String(num) : `[${num}]`)];
+        } else if (!inGroup && n.kind === 'parenthetical') {
+          content = [text('('), ...content, text(')')];
+        }
+        return [this.el('a', { class: 'cite', href: `#${citeId(label)}`, dataCite: label }, content)];
       }
       case 'footnoteReference': {
         const key: string = n.identifier ?? n.label;
@@ -610,8 +648,11 @@ class MystRenderer {
         this.el('h2', null, title),
         this.el(
           'ol',
-          { class: 'bibliography-list' },
-          cite.order.map((label) => this.el('li', { id: `cite-${label}` }, [raw(cite.data[label]?.html ?? label)])),
+          { class: cls('bibliography-list', this.opts.numberedReferences && 'numbered') },
+          cite.order.map((label, i) => {
+            const num = cite.data[label]?.enumerator ?? String(i + 1);
+            return this.el('li', { id: citeId(label), dataEnumerator: this.opts.numberedReferences ? num : undefined }, [raw(cite.data[label]?.html ?? label)]);
+          }),
         ),
       ]),
     ];

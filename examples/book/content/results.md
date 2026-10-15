@@ -22,3 +22,7 @@ The trajectory is consistent with @eq-evolution and with @thm-unitary.
 As argued in @sec-motivation, numbering stays consistent across pages:
 equations ([](#eq-schrodinger), [](#eq-energy)), figures ([](#fig-signal), [](#fig-orbit)),
 and the table [](#tbl-params).
+
+From the LaTeX page: [](#eq:packet), [](#fig:tex-orbit), [](#thm:ehrenfest), [](#tab:constants), and @eq:vg.
+
+Citations can also be written as DOIs, e.g. <doi:10.1103/PhysRev.28.1049>; this one matches an entry in `references.bib`, others are fetched from doi.org.

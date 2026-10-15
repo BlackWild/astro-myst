@@ -54,6 +54,14 @@
 .myst .math-display .math-body { flex: 1; overflow-x: auto; overflow-y: hidden; text-align: center; }
 .myst .math-display .equation-number { color: var(--myst-muted); font-variant-numeric: tabular-nums; }
 .myst .math-display .katex-display { margin: 0; }
+/* MyST numbers a display-math block once (e.g. a LaTeX align environment gets a single
+   number, attached to its first \label); hide KaTeX's own per-line numbers so the two
+   numbering schemes never disagree. */
+.myst .math-display .eqn-num { display: none; }
+
+/* Document parts such as \begin{abstract} */
+.myst .myst-part { margin: 0 0 2rem; padding: 0.25rem 1.25rem 0.5rem; border-left: 3px solid var(--myst-border); }
+.myst .myst-part > .part-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--myst-muted); margin: 0.5rem 0 0.25rem; }
 
 /* Figures, tables, code */
 .myst figure.myst-container { margin: 1.75rem 0; text-align: center; scroll-margin-top: 5rem; }
@@ -117,6 +125,8 @@
 .myst .footnote-backref { margin-left: 0.4em; text-decoration: none; }
 .myst .bibliography-list { list-style: none; padding-left: 0; }
 .myst .bibliography-list li { padding-left: 1.5em; text-indent: -1.5em; margin: 0.4rem 0; scroll-margin-top: 5rem; }
+.myst .bibliography-list.numbered li { padding-left: 2.5em; text-indent: -2.5em; }
+.myst .bibliography-list.numbered li::before { content: '[' attr(data-enumerator) ']'; display: inline-block; width: 2.5em; text-indent: 0; color: var(--myst-muted); }
 
 .myst .margin { float: right; clear: right; width: 30%; margin: 0 0 1rem 1rem; font-size: 0.85em; color: var(--myst-muted); }
 .myst .smallcaps { font-variant: small-caps; }

@@ -46,6 +46,8 @@ export interface MystBuild {
   pages: Map<string, MystPageJson>;
   /** Folder of each project of a multi-project site (`site.projects[].path` in myst.yml), by project slug. */
   projectPaths: Record<string, string>;
+  /** `site.options` from myst.yml (e.g. `numbered_references`, `folders`). */
+  siteOptions: Record<string, unknown>;
   /** Folder with images and downloads referenced from the AST (URLs like `/name-<hash>.png`). */
   publicDir: string;
   /** Cross-reference inventory (`myst.xref.json`), when written. */

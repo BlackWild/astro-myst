@@ -5,7 +5,7 @@ Monorepo for [`astro-myst`](packages/astro-myst): render [MyST Markdown](https:/
 | Path | What it is |
 | --- | --- |
 | [`packages/astro-myst`](packages/astro-myst) | The publishable npm package (Astro content loader, renderer, styles, `XrefPreview` component). Start with its README. |
-| [`examples/book`](examples/book) | A small multi-page "book" site using the package: chapter numbering, figures/sub-figures, equations, theorems, citations, tabs, a notebook, an appendix with its own numbering. |
+| [`examples/book`](examples/book) | A small multi-page "book" site using the package: chapter numbering, figures/sub-figures, equations, theorems, BibTeX and DOI citations, tabs, a LaTeX (`.tex`) page, a notebook, an appendix with its own numbering. |
 
 ![Example page with numbered sections, equation, sub-figures and code listing](docs/screenshot-figures.png)
 

@@ -1,0 +1,8 @@
+version: 1
+project:
+  title: DOI test
+  bibliography:
+    - refs.bib
+  toc:
+    - file: index.md
+site: {}

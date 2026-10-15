@@ -1,0 +1,9 @@
+version: 1
+project:
+  title: LaTeX Fixture
+  bibliography:
+    - refs.bib
+  toc:
+    - file: paper.tex
+    - file: notes.md
+site: {}

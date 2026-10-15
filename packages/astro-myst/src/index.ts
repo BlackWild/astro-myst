@@ -1,6 +1,7 @@
 export { mystLoader, mystPageSchema, type MystLoaderOptions, type MystPageData } from './loader.js';
 export { compileMystProject, readMystBuild, type CompileOptions } from './compile.js';
 export {
+  citeId,
   renderMystPage,
   type MarkdownHeading,
   type MystNodeHandler,
