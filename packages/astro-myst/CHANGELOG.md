@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+### Patch Changes
+
+- [#4](https://github.com/BlackWild/astro-myst/pull/4) [`2603e38`](https://github.com/BlackWild/astro-myst/commit/2603e38964460507b92695937792dcf8efc7369c) Thanks [@BlackWild](https://github.com/BlackWild)! - First release published from GitHub Actions with provenance.
+
 ## 0.1.0 — 2026-10-14
 
 Initial release.
