@@ -39,19 +39,18 @@ describe('DOI citations', () => {
     const { logger, messages } = memoryLogger();
     const build = await compileMystProject({ root, resolveFrom: PACKAGE_ROOT, logger });
     const page = build.pages.get('index')!;
-    expect(build.siteOptions).toEqual({});
     const { html } = await renderMystPage(page, { resolvePageUrl: () => undefined, resolveAssetUrl: (u) => u });
 
     // DOI found in refs.bib -> that BibTeX entry is used
     expect(html).toContain(
-      '<a class="cite" href="#cite-schrodinger1926" data-cite="schrodinger1926">Schrödinger (1926)</a>',
+      '<a class="myst-cite" href="#cite-schrodinger1926" data-cite="schrodinger1926">Schrödinger (1926)</a>',
     );
     // DOI not in refs.bib -> metadata from doi.org (here: the seeded cache), every syntax
     const remote =
-      '<a class="cite" href="#cite-doi-10.5281-zenodo.6476040" data-cite="https://doi.org/10.5281/zenodo.6476040">';
+      '<a class="myst-cite" href="#cite-doi-10.5281-zenodo.6476040" data-cite="https://doi.org/10.5281/zenodo.6476040">';
     expect(html.split(remote).length - 1).toBe(5); // [](doi:..), <https://doi.org/..>, {cite:p}, [@..], [text](https://doi.org/..)
     expect(html).toContain(`${remote}Cockett (2022)</a>`);
-    expect(html).toContain(`(${remote}Cockett, 2022</a>; <a class="cite" href="#cite-schrodinger1926"`);
+    expect(html).toContain(`(${remote}Cockett, 2022</a>; <a class="myst-cite" href="#cite-schrodinger1926"`);
     expect(html).toContain(`${remote}our paper</a>`);
     // bibliography: one entry per work, with ids matching the links
     expect(html).toContain('<li id="cite-schrodinger1926">Schrödinger, E. (1926).');
@@ -63,16 +62,16 @@ describe('DOI citations', () => {
     const numbered = await renderMystPage(page, {
       resolvePageUrl: () => undefined,
       resolveAssetUrl: (u) => u,
-      numberedReferences: true,
+      numberedCitations: true,
     });
     expect(numbered.html).toContain(
-      '<a class="cite" href="#cite-schrodinger1926" data-cite="schrodinger1926">Schrödinger [1]</a>',
+      '<a class="myst-cite" href="#cite-schrodinger1926" data-cite="schrodinger1926">Schrödinger [1]</a>',
     );
     expect(numbered.html).toContain(
-      `[${remote}2</a>, <a class="cite" href="#cite-schrodinger1926" data-cite="schrodinger1926">1</a>]`,
+      `[${remote}2</a>, <a class="myst-cite" href="#cite-schrodinger1926" data-cite="schrodinger1926">1</a>]`,
     );
     expect(numbered.html).toContain(
-      '<ol class="bibliography-list numbered"><li id="cite-schrodinger1926" data-enumerator="1">',
+      '<ol class="myst-bibliography-list myst-numbered"><li id="cite-schrodinger1926" data-enumerator="1">',
     );
 
     // An unknown DOI is reported (with file and line) and stays a plain doi.org link

@@ -25,7 +25,7 @@ describe('renderMystPage', () => {
       { type: 'heading', depth: 2, identifier: 'sec-a', html_id: 'sec-a', enumerator: '1.2', children: [t('Methods')] },
       { type: 'heading', depth: 3, identifier: 'plain', html_id: 'plain', children: [t('Plain')] },
     ]);
-    expect(html).toContain('<h2 id="sec-a"><span class="heading-number">1.2</span> Methods');
+    expect(html).toContain('<h2 id="sec-a"><span class="myst-heading-number">1.2</span> Methods');
     expect(html).toContain('href="#sec-a"');
     expect(headings).toEqual([
       { depth: 2, slug: 'sec-a', text: '1.2 Methods' },
@@ -70,10 +70,10 @@ describe('renderMystPage', () => {
         ],
       },
     ]);
-    expect(html).toContain('<a class="xref" href="#fig-a" data-xref-kind="figure">Figure 1</a>');
+    expect(html).toContain('<a class="myst-xref" href="#fig-a" data-xref-kind="figure">Figure 1</a>');
     expect(html).toContain('href="/docs/theory#eq-b"');
     expect(html).toContain('href="/docs/#sec-x"');
-    expect(html).toContain('class="xref xref-unresolved"');
+    expect(html).toContain('class="myst-xref myst-xref-unresolved"');
   });
 
   it('renders numbered display math with the pre-rendered KaTeX HTML', async () => {
@@ -91,10 +91,12 @@ describe('renderMystPage', () => {
       { type: 'paragraph', children: [{ type: 'inlineMath', value: 'y' }] },
     ]);
     expect(html).toContain(
-      '<div class="math-display" id="eq-e"><div class="math-body"><span class="katex">E</span></div><span class="equation-number">(4)</span></div>',
+      '<div class="myst-math-display" id="eq-e"><div class="myst-math-body"><span class="katex">E</span></div><span class="myst-equation-number">(4)</span></div>',
     );
-    expect(html).toContain('<div class="math-display"><div class="math-body"><span class="katex">x</span></div></div>');
-    expect(html).toContain('<span class="math-inline"><code>y</code></span>'); // fallback without html
+    expect(html).toContain(
+      '<div class="myst-math-display"><div class="myst-math-body"><span class="katex">x</span></div></div>',
+    );
+    expect(html).toContain('<span class="myst-math-inline"><code>y</code></span>'); // fallback without html
   });
 
   it('renders figures with caption numbers and rewritten image URLs', async () => {
@@ -119,10 +121,10 @@ describe('renderMystPage', () => {
         ],
       },
     ]);
-    expect(html).toContain('<figure id="fig-a" class="myst-container myst-figure numbered" data-kind="figure">');
+    expect(html).toContain('<figure id="fig-a" class="myst-container myst-figure myst-numbered" data-kind="figure">');
     expect(html).toContain('src="/docs/_myst/a-123.png"');
     expect(html).toContain('style="width: 50%"');
-    expect(html).toContain('<span class="caption-number">Figure 1:</span> Caption');
+    expect(html).toContain('<span class="myst-caption-number">Figure 1:</span> Caption');
   });
 
   it('puts image sizes into style and renders .mp4 files as videos', async () => {
@@ -138,7 +140,7 @@ describe('renderMystPage', () => {
     expect(html).toContain('style="height: 12.5px"');
     expect(html).not.toContain(' height=');
     expect(html).toContain(
-      '<video src="/docs/_myst/clip-3.mp4" aria-label="A clip" class="align-center" style="width: 50%" autoplay muted loop playsinline></video>',
+      '<video src="/docs/_myst/clip-3.mp4" aria-label="A clip" class="myst-align-center" style="width: 50%" autoplay muted loop playsinline></video>',
     );
   });
 
@@ -185,12 +187,12 @@ describe('renderMystPage', () => {
       },
     );
     expect(html).toContain(
-      '<span class="cite-group">(<a class="cite" href="#cite-k84" data-cite="k84">Knuth, 1984</a>)</span>',
+      '<span class="myst-cite-group">(<a class="myst-cite" href="#cite-k84" data-cite="k84">Knuth, 1984</a>)</span>',
     );
     expect(html).toContain(
-      '<sup class="footnote-ref"><a href="#fn-n" id="fnref-n" aria-label="Footnote 1">1</a></sup>',
+      '<sup class="myst-footnote-ref"><a href="#fn-n" id="fnref-n" aria-label="Footnote 1">1</a></sup>',
     );
-    expect(html).toMatch(/<li id="fn-n" value="1"><p>Note\. <a class="footnote-backref" href="#fnref-n"/);
+    expect(html).toMatch(/<li id="fn-n" value="1"><p>Note\. <a class="myst-footnote-backref" href="#fnref-n"/);
     expect(html).toContain('<li id="cite-k84">Knuth, D. (1984). <i>The TeXbook</i>.</li>');
   });
 
@@ -202,7 +204,7 @@ describe('renderMystPage', () => {
     ]);
     expect(html.match(/id="fnref-n[^"]*"/g)).toEqual(['id="fnref-n"', 'id="fnref-n-2"', 'id="fnref-n-3"']);
     expect(html.match(/href="#fn-n"/g)).toHaveLength(3);
-    expect(html).toContain('<a class="footnote-backref" href="#fnref-n"');
+    expect(html).toContain('<a class="myst-footnote-backref" href="#fnref-n"');
   });
 
   it('rewrites internal page links and static asset links only', async () => {
@@ -306,21 +308,23 @@ describe('renderMystPage', () => {
       },
     ]);
     expect(html).toContain(
-      '<aside class="proof proof-theorem" id="thm"><div class="proof-title"><strong>Theorem 2</strong> (Big)</div>',
+      '<aside class="myst-proof myst-proof-theorem" id="thm"><div class="myst-proof-title"><strong>Theorem 2</strong> (Big)</div>',
     );
-    expect(html).toContain('<aside class="admonition admonition-warning"><div class="admonition-title">Careful</div>');
     expect(html).toContain(
-      '<details class="admonition admonition-note dropdown"><summary class="admonition-title">More</summary>',
+      '<aside class="myst-admonition myst-admonition-warning"><div class="myst-admonition-title">Careful</div>',
+    );
+    expect(html).toContain(
+      '<details class="myst-admonition myst-admonition-note dropdown"><summary class="myst-admonition-title">More</summary>',
     );
   });
 
   it('highlights code with Shiki and can disable it', async () => {
     const code: MystNode = { type: 'code', lang: 'python', value: 'x = 1', emphasizeLines: [1] };
     const { html } = await render([code]);
-    expect(html).toContain('class="shiki shiki-themes github-light github-dark code-block"');
+    expect(html).toContain('class="shiki shiki-themes github-light github-dark myst-code-block"');
     expect(html).toContain('class="line highlighted"');
     const plain = await render([code], { codeThemes: false });
-    expect(plain.html).toContain('<pre class="code-block"><code class="language-python">x = 1</code></pre>');
+    expect(plain.html).toContain('<pre class="myst-code-block"><code class="language-python">x = 1</code></pre>');
   });
 
   it('supports custom handlers with fallback to the built-in renderer', async () => {
@@ -339,8 +343,8 @@ describe('renderMystPage', () => {
       },
     );
     expect(html).toContain('<my-widget value="w"></my-widget>');
-    expect(html).toContain('<div class="wrap"><aside class="admonition admonition-tip">');
-    expect(html).toContain('<aside class="admonition admonition-note">');
+    expect(html).toContain('<div class="wrap"><aside class="myst-admonition myst-admonition-tip">');
+    expect(html).toContain('<aside class="myst-admonition myst-admonition-note">');
   });
 
   it('renders notebook outputs', async () => {
@@ -360,9 +364,9 @@ describe('renderMystPage', () => {
         ],
       },
     ]);
-    expect(html).toContain('<pre class="output-stream stdout">hello\n</pre>');
+    expect(html).toContain('<pre class="myst-output-stream stdout">hello\n</pre>');
     expect(html).toContain('<img src="/docs/_myst/plot-1.png" alt="Output">');
-    expect(html).toContain('<pre class="output">42</pre>');
+    expect(html).toContain('<pre class="myst-output">42</pre>');
   });
 
   it('renders the older (mystmd < 1.7) output format and large outputs stored as files', async () => {
@@ -385,8 +389,8 @@ describe('renderMystPage', () => {
       ],
       { readAsset: (u) => files[u] },
     );
-    expect(html).toContain('<pre class="output-stream stdout">full log</pre>');
-    expect(html).toContain('<div class="output output-html"><table><tr><td>big</td></tr></table></div>');
+    expect(html).toContain('<pre class="myst-output-stream stdout">full log</pre>');
+    expect(html).toContain('<div class="myst-output myst-output-html"><table><tr><td>big</td></tr></table></div>');
   });
 
   it('escapes text and never crashes on unknown nodes', async () => {

@@ -10,31 +10,25 @@ export function joinUrl(...parts: string[]): string {
   return joined.startsWith('/') ? joined : `/${joined}`;
 }
 
-/** URL of a page whose route path (relative to `routeBase`) is `path` ("" = index). */
-export function pageUrl(opts: { base: string; routeBase: string; trailingSlash: TrailingSlash }, path: string): string {
-  let url = joinUrl(opts.base, opts.routeBase, path);
+/** Where the pages of a collection are served: a URL prefix, or a function from entry id to path. */
+export type MystRoute = string | ((id: string) => string);
+
+/** Path of an entry below Astro's `base`: the route prefix plus the id, the `index` entry at the prefix itself. */
+export function routeFor(route: MystRoute, id: string): string {
+  if (typeof route === 'function') return joinUrl(route(id));
+  return joinUrl(route, id === 'index' ? '' : id);
+}
+
+/** Absolute URL of a page whose path below Astro's `base` is `route`, honouring `trailingSlash`. */
+export function pageUrl(opts: { base: string; trailingSlash: TrailingSlash }, route: string): string {
+  let url = joinUrl(opts.base, route);
   if (url !== '/' && opts.trailingSlash !== 'always') url = url.replace(/\/$/, '');
   if (opts.trailingSlash === 'always' && !url.endsWith('/')) url += '/';
   return url;
 }
 
-/** Public URL of a MyST asset ("/name-<hash>.png") copied to `public/<assetsDir>`. */
+/** Public URL of a MyST asset ("/name-<hash>.png") served from `<base>/<assetsDir>`. */
 export function assetUrl(opts: { base: string; assetsDir: string }, url: string): string {
   if (!url || /^([a-z][a-z0-9+.-]*:|\/\/|#)/i.test(url)) return url; // absolute, protocol-relative, data:, anchors
   return joinUrl(opts.base, opts.assetsDir, url);
-}
-
-/**
- * Route path of a MyST page slug ("" for the project index). Mirrors mystmd's
- * `slugToUrl`: with `site.options.folders: true` slugs look like
- * "chapter-1.intro" and map to "chapter-1/intro"; "chapter-1.index" maps to "chapter-1".
- */
-export function slugToPath(slug: string, indexSlug: string): string {
-  if (slug === indexSlug) return '';
-  return slug.replace(/\.index$/, '').replace(/\./g, '/');
-}
-
-/** MyST's own URL for a page slug ("/" for the index, "/theory" otherwise). */
-export function slugToMystUrl(slug: string, indexSlug: string): string {
-  return `/${slugToPath(slug, indexSlug)}`;
 }

@@ -1,12 +1,11 @@
 {
   "name": "astro-myst",
   "version": "0.1.2",
-  "description": "MyST Markdown for Astro: a content loader powered by the official mystmd compiler, with numbered figures, equations and sections, cross-references across pages, citations, math, LaTeX sources and notebooks.",
+  "description": "MyST Markdown for Astro: an integration and content loader powered by the official mystmd compiler, with numbered figures, equations and sections, cross-references across pages, citations, math, LaTeX sources and notebooks. No myst.yml needed.",
   "keywords": [
     "astro",
     "withastro",
     "astro-loader",
-    "astro-component",
     "myst",
     "mystmd",
     "myst-markdown",
@@ -17,7 +16,8 @@
     "katex",
     "latex",
     "citations",
-    "doi"
+    "doi",
+    "astro-integration"
   ],
   "homepage": "https://blackwild.github.io/astro-myst/",
   "bugs": {
@@ -43,7 +43,8 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./styles.css": "./styles/myst.css",
+    "./base.css": "./styles/base.css",
+    "./theme.css": "./styles/theme.css",
     "./katex.css": "./styles/katex.css",
     "./XrefPreview.astro": "./components/XrefPreview.astro",
     "./package.json": "./package.json"
@@ -69,7 +70,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "check:package": "publint --strict && attw --pack . --profile esm-only --exclude-entrypoints ./styles.css ./katex.css ./XrefPreview.astro",
+    "check:package": "publint --strict && attw --pack . --profile esm-only --exclude-entrypoints ./base.css ./theme.css ./katex.css ./XrefPreview.astro",
     "prepack": "npm run build"
   },
   "peerDependencies": {
@@ -82,10 +83,12 @@
     }
   },
   "dependencies": {
+    "github-slugger": "^2.0.0",
     "hast-util-to-html": "^9.0.5",
     "hastscript": "^9.0.1",
     "katex": "0.15.6",
     "shiki": "^1.0.0 || ^2.0.0 || ^3.0.0 || ^4.0.0",
+    "tinyglobby": "^0.2.10",
     "yaml": "^2.8.1"
   },
   "devDependencies": {

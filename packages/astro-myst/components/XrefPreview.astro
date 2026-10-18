@@ -14,7 +14,7 @@ interface Props {
   /** Delay before showing a preview, in ms. */
   delay?: number;
 }
-const { selector = 'a.xref, a.cite', delay = 150 } = Astro.props;
+const { selector = 'a.myst-xref, a.myst-cite', delay = 150 } = Astro.props;
 ---
 
 <astro-myst-xref-preview data-selector={selector} data-delay={delay} hidden></astro-myst-xref-preview>
@@ -39,7 +39,7 @@ const { selector = 'a.xref, a.cite', delay = 150 } = Astro.props;
       this.abort?.abort();
       this.abort = new AbortController();
       const { signal } = this.abort;
-      const selector = this.dataset.selector || 'a.xref, a.cite';
+      const selector = this.dataset.selector || 'a.myst-xref, a.myst-cite';
       const delay = Number(this.dataset.delay ?? 150);
       const start = (event: Event) => {
         const link = (event.target as Element | null)?.closest?.(selector) as HTMLAnchorElement | null;

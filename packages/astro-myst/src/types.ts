@@ -39,15 +39,8 @@ export interface MystPageJson {
 export interface MystBuild {
   /** `_build/site/config.json`: projects, page order, levels, title numbering. */
   config: any;
-  /**
-   * Pages from `_build/site/content`, keyed by page slug (`"theory"`), or by
-   * `"<projectSlug>/<slug>"` for multi-project sites.
-   */
+  /** Pages from `_build/site/content`, keyed by page slug (`"theory"`). */
   pages: Map<string, MystPageJson>;
-  /** Folder of each project of a multi-project site (`site.projects[].path` in myst.yml), by project slug. */
-  projectPaths: Record<string, string>;
-  /** `site.options` from myst.yml (e.g. `numbered_references`, `folders`). */
-  siteOptions: Record<string, unknown>;
   /** Folder with images and downloads referenced from the AST (URLs like `/name-<hash>.png`). */
   publicDir: string;
   /** Cross-reference inventory (`myst.xref.json`), when written. */

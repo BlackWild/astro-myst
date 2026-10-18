@@ -14,7 +14,7 @@ const handlers = {
 
 describe('README examples', () => {
   it('custom handlers', async () => {
-    expect(mystLoader({ root: './content', handlers }).name).toBe('astro-myst');
+    expect(mystLoader({ base: './src/content/docs', handlers }).name).toBe('astro-myst');
     const { html } = await renderMystPage(
       {
         kind: 'Article',
@@ -31,7 +31,7 @@ describe('README examples', () => {
       },
       { resolvePageUrl: () => undefined, resolveAssetUrl: (u) => u, handlers },
     );
-    expect(html).toContain('<div class="my-tip"><aside class="admonition admonition-tip">');
+    expect(html).toContain('<div class="my-tip"><aside class="myst-admonition myst-admonition-tip">');
     expect(html).toContain('<my-widget data="{&#x22;a&#x22;:1}"></my-widget>');
   });
 });
