@@ -1,0 +1,386 @@
+/* astro-myst theme: an optional, small look for MyST content (`styles: 'theme'`, or import
+   astro-myst/theme.css after base.css). Components are styled wherever they appear; plain
+   elements (headings, tables, ...) only inside an element with class "myst". Like base.css, every
+   selector has zero specificity and sits in the cascade layer `components`, so your CSS wins, and
+   so do Tailwind's utilities and `prose`; colours are custom properties you can override. Dark
+   mode follows the system, or a `dark` class / data-theme="dark" on an ancestor. */
+@layer theme, base, components, utilities;
+
+@layer components {
+  :root {
+    --myst-accent: #1f5f8b;
+    --myst-muted: #5f6b76;
+    --myst-border: #d9dee3;
+    --myst-surface: #f6f8fa;
+    --myst-note: #2f6fb0;
+    --myst-tip: #2e8540;
+    --myst-warning: #b7791f;
+    --myst-danger: #c0392b;
+    --myst-proof: #6b4fa1;
+    --myst-highlight: rgba(31, 95, 139, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not(.light):not([data-theme="light"]) {
+      --myst-accent: #79b8e8;
+      --myst-muted: #9aa5b1;
+      --myst-border: #2f3740;
+      --myst-surface: #161b22;
+      --myst-note: #6aa7e6;
+      --myst-tip: #5fbf73;
+      --myst-warning: #e0a84a;
+      --myst-danger: #ef6f61;
+      --myst-proof: #b39ddb;
+      --myst-highlight: rgba(121, 184, 232, 0.12);
+    }
+  }
+  .dark,
+  [data-theme="dark"] {
+    --myst-accent: #79b8e8;
+    --myst-muted: #9aa5b1;
+    --myst-border: #2f3740;
+    --myst-surface: #161b22;
+    --myst-note: #6aa7e6;
+    --myst-tip: #5fbf73;
+    --myst-warning: #e0a84a;
+    --myst-danger: #ef6f61;
+    --myst-proof: #b39ddb;
+    --myst-highlight: rgba(121, 184, 232, 0.12);
+  }
+
+  /* Headings and targets */
+  :where(.myst [id]) {
+    scroll-margin-top: 5rem;
+  }
+  :where(.myst-heading-number) {
+    margin-right: 0.15em;
+    color: var(--myst-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  :where(.myst-heading-anchor) {
+    color: var(--myst-muted);
+    font-weight: 400;
+    transition: opacity 0.15s;
+  }
+  :where(.myst :target) {
+    animation: myst-target-flash 1.6s ease-out;
+  }
+  @keyframes myst-target-flash {
+    from {
+      background: var(--myst-highlight);
+      box-shadow: 0 0 0 6px var(--myst-highlight);
+    }
+    to {
+      background: transparent;
+      box-shadow: none;
+    }
+  }
+
+  /* Cross-references and citations */
+  :where(a.myst-xref) {
+    padding: 0 0.15em;
+    border-radius: 3px;
+    background: var(--myst-highlight);
+    color: var(--myst-accent);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  :where(a.myst-cite) {
+    color: var(--myst-accent);
+    text-decoration: underline dotted;
+    text-underline-offset: 0.2em;
+  }
+  :where(a.myst-xref:hover, a.myst-cite:hover) {
+    text-decoration: underline;
+  }
+  :where(.myst-xref-unresolved, .myst-cite-error, .myst-unhandled) {
+    color: var(--myst-danger);
+    border-bottom: 1px dashed currentColor;
+  }
+
+  /* Math */
+  :where(.myst-math-display) {
+    margin: 1.25rem 0;
+  }
+  :where(.myst-math-body) {
+    text-align: center;
+  }
+  :where(.myst-equation-number) {
+    color: var(--myst-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Document parts such as \begin{abstract} */
+  :where(.myst-part) {
+    margin: 0 0 2rem;
+    padding: 0.25rem 1.25rem 0.5rem;
+    border-left: 3px solid var(--myst-border);
+  }
+  :where(.myst-part-title) {
+    margin: 0.5rem 0 0.25rem;
+    color: var(--myst-muted);
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* Figures and tables */
+  :where(figure.myst-container) {
+    margin: 1.75rem 0;
+    text-align: center;
+  }
+  :where(figure.myst-container figcaption) {
+    margin-top: 0.6rem;
+    color: var(--myst-muted);
+    font-size: 0.92em;
+    text-align: left;
+  }
+  :where(figure.myst-container figcaption p) {
+    margin: 0.25rem 0;
+  }
+  :where(.myst-caption-number) {
+    color: inherit;
+    font-weight: 600;
+  }
+  :where(figure.myst-table figcaption, figure.myst-code figcaption) {
+    margin: 0 0 0.6rem;
+  }
+  :where(figure.myst-subfigure) {
+    margin: 0;
+  }
+  :where(figure.myst-subfigure figcaption) {
+    text-align: center;
+  }
+  :where(.myst table) {
+    margin: 0 auto;
+    border-collapse: collapse;
+    font-size: 0.95em;
+  }
+  :where(.myst th, .myst td) {
+    padding: 0.4rem 0.8rem;
+    border-bottom: 1px solid var(--myst-border);
+    text-align: left;
+  }
+  :where(.myst thead th) {
+    border-bottom-width: 2px;
+  }
+
+  /* Code */
+  :where(.myst-code-wrapper) {
+    margin: 1rem 0;
+    text-align: left;
+  }
+  :where(.myst-code-filename) {
+    padding: 0.3rem 0.8rem;
+    border: 1px solid var(--myst-border);
+    border-bottom: 0;
+    border-radius: 6px 6px 0 0;
+    color: var(--myst-muted);
+    font:
+      0.8em ui-monospace,
+      monospace;
+  }
+  :where(pre.myst-code-block) {
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--myst-border);
+    border-radius: 6px;
+    font-size: 0.88em;
+    line-height: 1.5;
+  }
+  :where(pre.myst-code-block:not(.shiki)) {
+    background: var(--myst-surface);
+  }
+
+  /* Admonitions, dropdowns, proofs */
+  :where(.myst-admonition) {
+    --myst-c: var(--myst-note);
+    margin: 1.25rem 0;
+    border: 1px solid var(--myst-border);
+    border-left: 4px solid var(--myst-c);
+    border-radius: 6px;
+    background: var(--myst-surface);
+  }
+  :where(.myst-admonition-title) {
+    padding: 0.55rem 1rem 0;
+    color: var(--myst-c);
+    font-weight: 600;
+  }
+  :where(.myst-admonition-body) {
+    padding: 0.1rem 1rem 0.2rem;
+  }
+  :where(.myst-admonition-tip, .myst-admonition-hint, .myst-admonition-seealso) {
+    --myst-c: var(--myst-tip);
+  }
+  :where(.myst-admonition-warning, .myst-admonition-caution, .myst-admonition-attention, .myst-admonition-important) {
+    --myst-c: var(--myst-warning);
+  }
+  :where(.myst-admonition-danger, .myst-admonition-error) {
+    --myst-c: var(--myst-danger);
+  }
+  :where(details.myst-admonition > summary) {
+    padding-bottom: 0.55rem;
+    cursor: pointer;
+  }
+  :where(details.myst-dropdown) {
+    margin: 1rem 0;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--myst-border);
+    border-radius: 6px;
+  }
+  :where(.myst-dropdown-title) {
+    cursor: pointer;
+    font-weight: 600;
+  }
+  :where(.myst-proof) {
+    margin: 1.25rem 0;
+    padding: 0.6rem 1rem;
+    border-left: 3px solid var(--myst-proof);
+    border-radius: 0 6px 6px 0;
+    background: var(--myst-surface);
+  }
+  :where(.myst-proof-title strong) {
+    color: var(--myst-proof);
+  }
+  :where(.myst-proof-body > :first-child) {
+    margin-top: 0.4rem;
+  }
+  :where(.myst-proof-body > :last-child) {
+    margin-bottom: 0.2rem;
+  }
+
+  /* Tabs */
+  :where(.myst-tabs) {
+    margin: 1.25rem 0;
+    border: 1px solid var(--myst-border);
+    border-radius: 6px;
+  }
+  :where(.myst-tabs > label) {
+    padding: 0.5rem 1rem;
+    border-bottom: 2px solid transparent;
+    color: var(--myst-muted);
+  }
+  :where(.myst-tabs > input:checked + label) {
+    border-bottom-color: var(--myst-accent);
+    color: var(--myst-accent);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  :where(.myst-tabs > input:focus-visible + label) {
+    outline-color: var(--myst-accent);
+  }
+  :where(.myst-tabs > .myst-tab-panel) {
+    padding: 0.25rem 1rem;
+    border-top: 1px solid var(--myst-border);
+  }
+
+  /* Cards */
+  :where(.myst-card) {
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--myst-border);
+    border-radius: 8px;
+    color: inherit;
+    text-decoration: none;
+  }
+  :where(a.myst-card:hover) {
+    border-color: var(--myst-accent);
+  }
+  :where(.myst-card-title) {
+    margin-bottom: 0.3rem;
+    font-weight: 600;
+  }
+
+  /* Footnotes and bibliography */
+  :where(.myst-footnote-ref a) {
+    padding: 0 0.1em;
+    color: var(--myst-accent);
+    text-decoration: none;
+  }
+  :where(.myst-footnotes, .myst-bibliography) {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--myst-border);
+    font-size: 0.9em;
+  }
+  :where(.myst-footnotes h2, .myst-bibliography h2) {
+    font-size: 1.05rem;
+  }
+  :where(.myst-footnote-backref) {
+    margin-left: 0.4em;
+    text-decoration: none;
+  }
+  :where(.myst-bibliography-list li) {
+    margin: 0.4rem 0;
+    padding-left: 1.5em;
+    text-indent: -1.5em;
+  }
+  :where(.myst-bibliography-list.myst-numbered > li) {
+    padding-left: 2.5em;
+    text-indent: -2.5em;
+  }
+  :where(.myst-bibliography-list.myst-numbered > li)::before {
+    display: inline-block;
+    width: 2.5em;
+    color: var(--myst-muted);
+    text-indent: 0;
+  }
+
+  /* Margin notes and sidebars */
+  :where(.myst-aside-margin, .myst-aside-sidebar) {
+    float: right;
+    clear: right;
+    width: 30%;
+    margin: 0 0 1rem 1rem;
+    color: var(--myst-muted);
+    font-size: 0.85em;
+  }
+
+  /* Notebook cells and outputs */
+  :where(.myst-notebook-cell) {
+    margin: 1.25rem 0;
+  }
+  :where(.myst-notebook-cell .myst-code-wrapper) {
+    margin-bottom: 0;
+  }
+  :where(.myst-notebook-cell pre.myst-code-block) {
+    margin-bottom: 0;
+    border-radius: 6px 6px 0 0;
+  }
+  :where(.myst-outputs) {
+    padding: 0.5rem 1rem;
+    overflow-x: auto;
+    border: 1px solid var(--myst-border);
+    border-top: 0;
+    border-radius: 0 0 6px 6px;
+  }
+  :where(.myst-outputs pre) {
+    margin: 0;
+    font-size: 0.85em;
+    white-space: pre-wrap;
+  }
+  :where(.myst-output-error) {
+    color: var(--myst-danger);
+  }
+  :where(.myst-output-html) {
+    overflow-x: auto;
+  }
+  :where(details.myst-hidden) {
+    margin: 0.5rem 0;
+  }
+  :where(details.myst-hidden > summary) {
+    color: var(--myst-muted);
+    font-size: 0.85em;
+  }
+
+  /* Hover previews */
+  :where(.myst-preview) {
+    --myst-preview-bg: var(--myst-surface);
+    border-color: var(--myst-border);
+  }
+  :where(.myst-preview figure.myst-container) {
+    margin: 0;
+  }
+  :where(.myst-preview-source) {
+    color: var(--myst-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+}

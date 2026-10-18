@@ -138,7 +138,7 @@ jobs:
           npm install --no-audit --no-fund "astro@$ASTRO_VERSION" "mystmd@$MYSTMD_VERSION" "$RUNNER_TEMP"/pack/astro-myst-*.tgz
           npx astro build
           grep -q 'href="/theory#eq-schrodinger"' dist/results/index.html
-          grep -q 'class="equation-number">(1)<' dist/theory/index.html
+          grep -q 'class="myst-equation-number">(1)<' dist/theory/index.html
 
   e2e:
     name: End-to-end

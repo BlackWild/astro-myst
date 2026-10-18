@@ -4,8 +4,6 @@ import type { MarkdownHeading } from 'astro';
 import { VERSION } from 'astro-myst';
 import XrefPreview from 'astro-myst/XrefPreview.astro';
 import Search from '../components/Search.astro';
-import 'astro-myst/katex.css';
-import 'astro-myst/styles.css';
 import '../styles/docs.css';
 
 type Page = CollectionEntry<'docs'>;
@@ -21,7 +19,7 @@ const { data } = page;
 const repo = 'https://github.com/BlackWild/astro-myst';
 const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 
-// Sidebar sections follow the folders of the MyST project (site.options.folders).
+// Sidebar sections follow the content folders (entry ids such as "guides/latex").
 const SECTIONS: Record<string, string> = {
   '': 'Start here',
   guides: 'Guides',
@@ -29,8 +27,7 @@ const SECTIONS: Record<string, string> = {
   explanation: 'Explanation',
   project: 'Project',
 };
-const sectionOf = (p: Page) =>
-  p.data.path.includes('/') ? p.data.path.split('/')[0] : (p.data.frontmatter.section ?? '');
+const sectionOf = (p: Page) => (p.id.includes('/') ? p.id.split('/')[0] : String(p.data.section ?? ''));
 const groups = Object.entries(SECTIONS)
   .map(([key, title]) => ({ key, title, pages: nav.filter((p) => sectionOf(p) === key) }))
   .filter((g) => g.pages.length > 0);
@@ -40,7 +37,7 @@ const prev = nav[index - 1];
 const next = nav[index + 1];
 const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 const label = (p: Page) => p.data.short_title || p.data.title;
-const pageTitle = data.isIndex ? 'astro-myst: MyST Markdown for Astro' : `${data.title} · astro-myst`;
+const pageTitle = page.id === 'index' ? 'astro-myst: MyST Markdown for Astro' : `${data.title} · astro-myst`;
 ---
 
 <!doctype html>
@@ -84,7 +81,7 @@ const pageTitle = data.isIndex ? 'astro-myst: MyST Markdown for Astro' : `${data
               <ul>
                 {g.pages.map((p) => (
                   <li>
-                    <a href={p.data.url} aria-current={p.id === page.id ? 'page' : undefined}>
+                    <a href={p.data.myst.url} aria-current={p.id === page.id ? 'page' : undefined}>
                       {label(p)}
                     </a>
                   </li>
@@ -105,11 +102,11 @@ const pageTitle = data.isIndex ? 'astro-myst: MyST Markdown for Astro' : `${data
         </article>
 
         <footer class="page-footer">
-          <a class="edit" href={`${repo}/edit/main/docs/content/${data.source}`}>Edit this page on GitHub</a>
+          <a class="edit" href={`${repo}/edit/main/docs/${page.filePath}`}>Edit this page on GitHub</a>
           <nav class="pager" aria-label="Previous and next page">
             {
               prev ? (
-                <a class="prev" href={prev.data.url}>
+                <a class="prev" href={prev.data.myst.url}>
                   <span>Previous</span>
                   {label(prev)}
                 </a>
@@ -119,7 +116,7 @@ const pageTitle = data.isIndex ? 'astro-myst: MyST Markdown for Astro' : `${data
             }
             {
               next && (
-                <a class="next" href={next.data.url}>
+                <a class="next" href={next.data.myst.url}>
                   <span>Next</span>
                   {label(next)}
                 </a>

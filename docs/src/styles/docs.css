@@ -219,7 +219,7 @@ article.myst h2 {
   padding-top: 0.4rem;
   border-top: 1px solid var(--border);
 }
-article.myst :is(.bibliography, .footnotes, .myst-part) > h2 {
+article.myst :is(.myst-bibliography, .myst-footnotes, .myst-part) > h2 {
   border-top: 0;
   padding-top: 0;
   margin-top: 0.5rem;
@@ -231,7 +231,7 @@ article.myst h3 {
 article.myst :is(p, li) {
   max-width: 72ch;
 }
-article.myst .math-display,
+article.myst .myst-math-display,
 article.myst figure {
   font-family: var(--serif);
 }

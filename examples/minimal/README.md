@@ -1,14 +1,16 @@
 # astro-myst example: minimal
 
-The smallest useful setup: one collection, one dynamic route, two MyST pages that reference each other.
+The smallest useful setup: one collection, one dynamic route, two MyST pages that reference each other. No `myst.yml`.
 
 | File | Purpose |
 | --- | --- |
-| `content/myst.yml` | The MyST project (needs a `site:` section) |
-| `src/content.config.ts` | `mystLoader({ root: './content' })` turns every MyST page into a collection entry |
-| `src/pages/[...slug].astro` | Renders each entry with `render(entry)` and the default styles |
+| `astro.config.ts` | Adds the integration: `integrations: [myst()]` |
+| `src/content.config.ts` | `mystLoader({ base: './content', route: '/' })` turns every MyST file in `content/` into a collection entry |
+| `src/pages/[...slug].astro` | Renders each entry with `render(entry)`; the base styles are added by the integration |
 
 ```sh
+# from the repository root
 npm install
-npm run dev
+npm run build
+npm run dev -w astro-myst-example-minimal
 ```

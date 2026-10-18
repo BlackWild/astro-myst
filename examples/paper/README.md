@@ -1,6 +1,6 @@
 # astro-myst example: a LaTeX paper
 
-A scientific article written in **LaTeX** (`content/paper.tex`) with a supplement in **MyST Markdown** (`content/supplement.md`). mystmd compiles both as one project, so:
+A scientific article written in **LaTeX** (`content/index.tex`) with a supplement in **MyST Markdown** (`content/supplement.md`). mystmd compiles both as one project, so:
 
 - `\ref`, `\eqref` and `\cite` work across the two files (and `[](#eq:lindblad)` from Markdown into LaTeX)
 - the supplement numbers its own figures and equations as `S1`, `S2`, … (`numbering.enumerator`)

@@ -120,7 +120,8 @@ function run(cmd: string, args: string[], cwd: string, logger: MystLogger): Prom
       const msg = line.trim();
       if (!msg || msg.startsWith('building myst-cli session')) return;
       lines.push(msg);
-      if (msg.startsWith('⚠️')) logger.warn(msg);
+      // Frontmatter keys MyST does not know are the site's own (pubDate, draft, ...), validated by the collection schema.
+      if (msg.startsWith('⚠️') && !msg.includes("'frontmatter' extra keys ignored")) logger.warn(msg);
       else if (msg.startsWith('⛔') || /^error\b/i.test(msg)) {
         errors.push(msg);
         logger.error(msg);
@@ -183,7 +184,7 @@ export function compileMystProject(opts: CompileOptions): Promise<MystBuild> {
   return withLock(root, async () => {
     const { logger } = opts;
     if (!fs.existsSync(path.join(root, 'myst.yml'))) {
-      throw new Error(`No myst.yml found in ${root}. Run \`myst init\` there or fix the loader's \`root\` option.`);
+      throw new Error(`No myst.yml found in ${root}: compileMystProject() needs a MyST project folder.`);
     }
     const siteDir = path.join(root, '_build', 'site');
     // Start from a clean site folder so deleted pages and stale assets disappear.
@@ -238,18 +239,11 @@ export function readMystBuild(root: string, logger: MystLogger, label = 'myst'):
   for (const version of untested) {
     logger.warn(`${label} writes MyST page format version ${version}, which astro-myst has not been tested with.`);
   }
-  const projectPaths: Record<string, string> = {};
-  for (const p of readMystYml(root).site?.projects ?? []) {
-    if (p?.slug && p?.path) projectPaths[String(p.slug)] = String(p.path);
-  }
   const xrefPath = path.join(siteDir, 'myst.xref.json');
   return {
     config,
     pages,
     publicDir: path.join(siteDir, 'public'),
-    projectPaths,
-    // config.json only keeps options declared by a MyST theme, so read them from myst.yml.
-    siteOptions: readMystYml(root).site?.options ?? {},
     xref: fs.existsSync(xrefPath) ? readJson(xrefPath) : undefined,
   };
 }

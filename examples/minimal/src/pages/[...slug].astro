@@ -1,17 +1,15 @@
 ---
 import { getCollection, render } from 'astro:content';
 import XrefPreview from 'astro-myst/XrefPreview.astro';
-import 'astro-myst/katex.css';
-import 'astro-myst/styles.css';
 
 export async function getStaticPaths() {
   const pages = await getCollection('docs');
-  return pages.map((page) => ({ params: { slug: page.data.path || undefined }, props: { page } }));
+  return pages.map((page) => ({ params: { slug: page.id === 'index' ? undefined : page.id }, props: { page } }));
 }
 
 const { page } = Astro.props;
 const { Content } = await render(page);
-const nav = (await getCollection('docs')).sort((a, b) => a.data.order - b.data.order);
+const nav = (await getCollection('docs')).sort((a, b) => a.data.myst.order - b.data.myst.order);
 ---
 
 <html lang="en">
@@ -23,9 +21,9 @@ const nav = (await getCollection('docs')).sort((a, b) => a.data.order - b.data.o
   </head>
   <body style="max-width: 46rem; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, sans-serif; line-height: 1.6">
     <nav>
-      {nav.map((p, i) => <>{i > 0 && ' · '}<a href={p.data.url}>{p.data.title}</a></>)}
+      {nav.map((p, i) => <>{i > 0 && ' · '}<a href={p.data.myst.url}>{p.data.title}</a></>)}
     </nav>
-    <article class="myst">
+    <article>
       <h1>{page.data.title}</h1>
       <Content />
     </article>

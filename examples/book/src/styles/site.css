@@ -122,7 +122,7 @@ main {
   line-height: 1.2;
   margin: 0 0 0.4rem;
 }
-.title-block h1 .heading-number {
+.title-block h1 .myst-heading-number {
   color: var(--muted);
   font-weight: 400;
 }

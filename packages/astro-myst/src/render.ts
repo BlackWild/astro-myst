@@ -51,21 +51,28 @@ export type MystNodeHandler = (
   parent?: MystNode,
 ) => HastChild | HastChild[] | undefined | null;
 
-export interface RenderOptions {
+/** How MyST content is turned into HTML. Set on the integration, and per collection on the loader. */
+export interface MystRenderSettings {
+  /** Shiki themes for code blocks, or `false` to disable syntax highlighting. Default: GitHub light and dark. */
+  codeThemes?: { light: string; dark: string } | false;
+  /** Per-node-type overrides, e.g. for custom directives from MyST plugins. */
+  handlers?: Record<string, MystNodeHandler>;
+  /** Numbered citations ("[1]") instead of author–year ones. */
+  numberedCitations?: boolean;
+  /** Headings of the sections appended to pages. */
+  labels?: {
+    /** Default: "References". */
+    references?: string;
+    /** Default: "Footnotes". */
+    footnotes?: string;
+  };
+}
+
+export interface RenderOptions extends MystRenderSettings {
   /** Map a MyST page URL ("/", "/theory") to the URL of the Astro page. */
   resolvePageUrl: (mystUrl: string) => string | undefined;
   /** Map a MyST asset URL ("/figure-<hash>.png") to its public URL. */
   resolveAssetUrl: (url: string) => string;
-  /** Shiki themes for code blocks, or `false` to disable syntax highlighting. */
-  codeThemes?: { light: string; dark: string } | false;
-  /** Per-node-type overrides, e.g. for custom directives from MyST plugins. */
-  handlers?: Record<string, MystNodeHandler>;
-  /** Numbered citations ("[1]") instead of author–year. The loader defaults this to myst.yml `site.options.numbered_references`. */
-  numberedReferences?: boolean;
-  /** Heading for the bibliography section. Default: "References". */
-  bibliographyTitle?: string;
-  /** Heading for the footnotes section. Default: "Footnotes". */
-  footnotesTitle?: string;
   /**
    * Read a text asset written by mystmd (large notebook outputs are stored as
    * files, e.g. "/<hash>.html"). Return `undefined` if unavailable.
@@ -242,7 +249,7 @@ class MystRenderer {
                 class: cls('myst-part', `myst-part-${part.toLowerCase()}`, n.class),
                 dataPart: part,
               },
-              [this.el('h2', { class: 'part-title' }, title), ...kids()],
+              [this.el('h2', { class: 'myst-part-title' }, title), ...kids()],
             ),
           ];
         }
@@ -250,7 +257,7 @@ class MystRenderer {
         const isCell = typeof n.kind === 'string' && n.kind.startsWith('notebook-code');
         if (!n.class && !n.label && !isCell) return kids();
         return [
-          this.el('div', { id: n.label ? id : undefined, class: cls(isCell && 'notebook-cell', n.class) }, kids()),
+          this.el('div', { id: n.label ? id : undefined, class: cls(isCell && 'myst-notebook-cell', n.class) }, kids()),
         ];
       }
       case 'text':
@@ -264,10 +271,10 @@ class MystRenderer {
         this.headings.push({ depth: n.depth, slug: id ?? '', text: numbered ? `${n.enumerator} ${label}` : label });
         return [
           this.el(`h${Math.min(6, Math.max(1, n.depth ?? 2))}`, { id }, [
-            ...(numbered ? [this.el('span', { class: 'heading-number' }, n.enumerator), text(' ')] : []),
+            ...(numbered ? [this.el('span', { class: 'myst-heading-number' }, n.enumerator), text(' ')] : []),
             ...kids(),
             ...(id
-              ? [this.el('a', { class: 'heading-anchor', href: `#${id}`, ariaLabel: 'Link to this section' }, '#')]
+              ? [this.el('a', { class: 'myst-heading-anchor', href: `#${id}`, ariaLabel: 'Link to this section' }, '#')]
               : []),
           ]),
         ];
@@ -281,7 +288,7 @@ class MystRenderer {
       case 'delete':
         return [this.el('del', null, kids())];
       case 'smallcaps':
-        return [this.el('span', { class: 'smallcaps' }, kids())];
+        return [this.el('span', { class: 'myst-smallcaps' }, kids())];
       case 'superscript':
         return [this.el('sup', null, kids())];
       case 'subscript':
@@ -329,7 +336,7 @@ class MystRenderer {
       case 'definitionDescription':
         return [this.el('dd', null, kids())];
       case 'glossary':
-        return [this.el('div', { class: 'glossary' }, kids())];
+        return [this.el('div', { class: 'myst-glossary' }, kids())];
 
       // ----- links & references ----------------------------------------------
       case 'link': {
@@ -359,7 +366,7 @@ class MystRenderer {
           return [
             this.el(
               'span',
-              { class: 'xref xref-unresolved', title: `Unresolved reference: ${n.identifier ?? n.label}` },
+              { class: 'myst-xref myst-xref-unresolved', title: `Unresolved reference: ${n.identifier ?? n.label}` },
               content,
             ),
           ];
@@ -373,7 +380,7 @@ class MystRenderer {
           this.el(
             'a',
             {
-              class: 'xref',
+              class: 'myst-xref',
               href,
               dataXrefKind: n.kind,
               dataXrefRemote: n.remote ? 'true' : undefined,
@@ -384,14 +391,14 @@ class MystRenderer {
         ];
       }
       case 'citeGroup': {
-        const numbered = this.opts.numberedReferences && n.kind === 'parenthetical';
+        const numbered = this.opts.numberedCitations && n.kind === 'parenthetical';
         const sep = numbered || n.kind === 'narrative' ? ', ' : '; ';
         const inner = (n.children ?? []).flatMap((c, i) => [...(i ? [text(sep)] : []), ...this.one(c, n)]);
         const [open, close] = numbered ? ['[', ']'] : ['(', ')'];
         return [
           this.el(
             'span',
-            { class: 'cite-group' },
+            { class: 'myst-cite-group' },
             n.kind === 'parenthetical' ? [text(open), ...inner, text(close)] : inner,
           ),
         ];
@@ -400,9 +407,11 @@ class MystRenderer {
         const label: string = n.label ?? n.identifier;
         let content = n.children?.length ? kids() : [text(label)];
         if (n.error)
-          return [this.el('span', { class: 'cite cite-error', title: `Citation not found: ${label}` }, content)];
+          return [
+            this.el('span', { class: 'myst-cite myst-cite-error', title: `Citation not found: ${label}` }, content),
+          ];
         const inGroup = parent?.type === 'citeGroup';
-        const num = this.opts.numberedReferences
+        const num = this.opts.numberedCitations
           ? (n.enumerator ?? this.page.references?.cite?.data[label]?.enumerator)
           : undefined;
         if (num) {
@@ -413,7 +422,7 @@ class MystRenderer {
         } else if (!inGroup && n.kind === 'parenthetical') {
           content = [text('('), ...content, text(')')];
         }
-        return [this.el('a', { class: 'cite', href: `#${citeId(label)}`, dataCite: label }, content)];
+        return [this.el('a', { class: 'myst-cite', href: `#${citeId(label)}`, dataCite: label }, content)];
       }
       case 'footnoteReference': {
         const key: string = n.identifier ?? n.label;
@@ -423,7 +432,7 @@ class MystRenderer {
         this.footnoteRefs.set(key, count);
         const refId = count === 1 ? `fnref-${key}` : `fnref-${key}-${count}`;
         return [
-          this.el('sup', { class: 'footnote-ref' }, [
+          this.el('sup', { class: 'myst-footnote-ref' }, [
             this.el('a', { href: `#fn-${key}`, id: refId, ariaLabel: `Footnote ${num}` }, num),
           ]),
         ];
@@ -437,18 +446,22 @@ class MystRenderer {
       // ----- math ------------------------------------------------------------
       case 'inlineMath':
         return [
-          this.el('span', { class: 'math-inline' }, n.html ? [raw(n.html)] : [this.el('code', null, n.value ?? '')]),
+          this.el(
+            'span',
+            { class: 'myst-math-inline' },
+            n.html ? [raw(n.html)] : [this.el('code', null, n.value ?? '')],
+          ),
         ];
       case 'math': {
         const numbered = Boolean(n.enumerator) && n.enumerated !== false;
         return [
-          this.el('div', { class: 'math-display', id: n.label || n.identifier ? id : undefined }, [
+          this.el('div', { class: 'myst-math-display', id: n.label || n.identifier ? id : undefined }, [
             this.el(
               'div',
-              { class: 'math-body' },
+              { class: 'myst-math-body' },
               n.html ? [raw(n.html)] : [this.el('pre', null, [this.el('code', null, n.value ?? '')])],
             ),
-            ...(numbered ? [this.el('span', { class: 'equation-number' }, `(${n.enumerator})`)] : []),
+            ...(numbered ? [this.el('span', { class: 'myst-equation-number' }, `(${n.enumerator})`)] : []),
           ]),
         ];
       }
@@ -463,8 +476,8 @@ class MystRenderer {
               class: cls(
                 'myst-container',
                 `myst-${n.kind ?? 'figure'}`,
-                n.subcontainer && 'subfigure',
-                n.enumerated !== false && 'numbered',
+                n.subcontainer && 'myst-subfigure',
+                n.enumerated !== false && 'myst-numbered',
                 n.class,
               ),
               dataKind: n.kind,
@@ -475,16 +488,16 @@ class MystRenderer {
       case 'caption':
         return [this.el('figcaption', null, kids())];
       case 'captionNumber':
-        return [this.el('span', { class: 'caption-number' }, kids()), text(' ')];
+        return [this.el('span', { class: 'myst-caption-number' }, kids()), text(' ')];
       case 'legend':
-        return [this.el('div', { class: 'legend' }, kids())];
+        return [this.el('div', { class: 'myst-legend' }, kids())];
       case 'image': {
         // As in MyST's own theme: sizes go into `style` (a bare number means pixels), and
         // .mp4 files are videos that play like animated GIFs.
         const size = (prop: string, v: unknown) =>
           v ? [`${prop}: ${String(v).replace(/^\d+(\.\d+)?$/, '$&px')}`] : [];
         const style = [...size('width', n.width), ...size('height', n.height)].join('; ') || undefined;
-        const className = cls(n.align && `align-${n.align}`, n.class);
+        const className = cls(n.align && `myst-align-${n.align}`, n.class);
         if (/\.mp4$/i.test(String(n.url ?? ''))) {
           return [
             this.el('video', {
@@ -514,7 +527,7 @@ class MystRenderer {
       }
       case 'iframe':
         return [
-          this.el('div', { class: 'iframe' }, [
+          this.el('div', { class: 'myst-iframe' }, [
             this.el('iframe', {
               src: n.src,
               width: n.width ?? '100%',
@@ -544,7 +557,7 @@ class MystRenderer {
             ),
           );
         return [
-          this.el('div', { class: 'table-wrapper' }, [
+          this.el('div', { class: 'myst-table-wrapper' }, [
             this.el('table', { class: n.class }, [
               ...(headCount ? [this.el('thead', null, renderRows(rows.slice(0, headCount)))] : []),
               this.el('tbody', null, renderRows(rows.slice(headCount))),
@@ -557,12 +570,12 @@ class MystRenderer {
         const lang = this.lang(n);
         let pre: Element;
         if (this.highlighter && this.themes && lang && this.langs.has(lang)) {
-          const root = this.highlighter.codeToHast(value, { lang, themes: this.themes, defaultColor: false });
+          const root = this.highlighter.codeToHast(value, { lang, themes: this.themes, defaultColor: 'light' });
           pre = root.children[0] as Element;
         } else {
           pre = this.el('pre', null, [this.el('code', { class: n.lang ? `language-${n.lang}` : undefined }, value)]);
         }
-        hastClasses(pre).push('code-block', ...(n.showLineNumbers ? ['line-numbers'] : []));
+        hastClasses(pre).push('myst-code-block', ...(n.showLineNumbers ? ['myst-line-numbers'] : []));
         if (n.showLineNumbers && n.startingLineNumber > 1) {
           pre.properties.style = [pre.properties.style, `counter-reset: line ${n.startingLineNumber - 1}`]
             .filter(Boolean)
@@ -577,9 +590,9 @@ class MystRenderer {
           line += 1;
           if (emphasize.has(line)) list.push('highlighted');
         }
-        const header = n.filename ? [this.el('div', { class: 'code-filename' }, n.filename)] : [];
+        const header = n.filename ? [this.el('div', { class: 'myst-code-filename' }, n.filename)] : [];
         return [
-          this.el('div', { class: cls('code-wrapper', n.class), id: n.label ? id : undefined, dataLang: n.lang }, [
+          this.el('div', { class: cls('myst-code-wrapper', n.class), id: n.label ? id : undefined, dataLang: n.lang }, [
             ...header,
             pre,
           ]),
@@ -595,27 +608,27 @@ class MystRenderer {
         const titleNode = children[0]?.type === 'admonitionTitle' ? children[0] : undefined;
         const titleOut = titleNode ? this.all(titleNode) : [text(cap(kind))];
         const body = (titleNode ? children.slice(1) : children).flatMap((c) => this.one(c, n));
-        const className = cls('admonition', `admonition-${kind}`, n.class);
+        const className = cls('myst-admonition', `myst-admonition-${kind}`, n.class);
         const dropdown = String(n.class ?? '')
           .split(/\s+/)
           .includes('dropdown');
         if (dropdown) {
           return [
             this.el('details', { class: className, open: n.open }, [
-              this.el('summary', { class: 'admonition-title' }, titleOut),
-              this.el('div', { class: 'admonition-body' }, body),
+              this.el('summary', { class: 'myst-admonition-title' }, titleOut),
+              this.el('div', { class: 'myst-admonition-body' }, body),
             ]),
           ];
         }
         return [
           this.el('aside', { class: className, id: n.label ? id : undefined }, [
-            this.el('div', { class: 'admonition-title' }, titleOut),
-            this.el('div', { class: 'admonition-body' }, body),
+            this.el('div', { class: 'myst-admonition-title' }, titleOut),
+            this.el('div', { class: 'myst-admonition-body' }, body),
           ]),
         ];
       }
       case 'admonitionTitle':
-        return [this.el('div', { class: 'admonition-title' }, kids())];
+        return [this.el('div', { class: 'myst-admonition-title' }, kids())];
       case 'proof':
       case 'exercise':
       case 'solution': {
@@ -627,37 +640,44 @@ class MystRenderer {
         const label = `${cap(kind)}${numbered ? ` ${n.enumerator}` : ''}`;
         const title = titleNode ? [text(' ('), ...this.all(titleNode), text(')')] : [];
         return [
-          this.el('aside', { class: cls('proof', `proof-${kind}`, n.class), id: n.label ? id : undefined }, [
-            this.el('div', { class: 'proof-title' }, [this.el('strong', null, label), ...title]),
-            this.el('div', { class: 'proof-body' }, body),
+          this.el('aside', { class: cls('myst-proof', `myst-proof-${kind}`, n.class), id: n.label ? id : undefined }, [
+            this.el('div', { class: 'myst-proof-title' }, [this.el('strong', null, label), ...title]),
+            this.el('div', { class: 'myst-proof-body' }, body),
           ]),
         ];
       }
-      case 'details':
-        return [this.el('details', { class: n.class, open: n.open }, kids())];
+      case 'details': // the {dropdown} directive
+        return [this.el('details', { class: cls('myst-dropdown', n.class), open: n.open }, kids())];
       case 'summary':
-        return [this.el('summary', null, kids())];
+        return [this.el('summary', { class: parent?.type === 'details' ? 'myst-dropdown-title' : undefined }, kids())];
       case 'aside':
       case 'margin':
       case 'sidebar':
-        return [this.el('aside', { class: cls('margin', n.kind, n.class) }, kids())];
+        // mystmd gives {margin} and {aside} no kind; {sidebar} and {topic} have one.
+        return [
+          this.el(
+            'aside',
+            { class: cls('myst-aside', `myst-aside-${n.kind ?? (n.type === 'aside' ? 'margin' : n.type)}`, n.class) },
+            kids(),
+          ),
+        ];
       case 'card':
         return [
           this.el(
             n.url ? 'a' : 'div',
-            { class: cls('card', n.class), href: n.url ? (this.opts.resolvePageUrl(n.url) ?? n.url) : undefined },
+            { class: cls('myst-card', n.class), href: n.url ? (this.opts.resolvePageUrl(n.url) ?? n.url) : undefined },
             kids(),
           ),
         ];
       case 'cardTitle':
-        return [this.el('div', { class: 'card-title' }, kids())];
+        return [this.el('div', { class: 'myst-card-title' }, kids())];
       case 'header':
       case 'footer':
-        return [this.el('div', { class: `card-${n.type}` }, kids())];
+        return [this.el('div', { class: `myst-card-${n.type}` }, kids())];
       case 'grid': {
         const cols: number[] = Array.isArray(n.columns) ? n.columns : [1, 1, 2, 2];
-        const style = cols.map((c, i) => `--grid-cols-${i}: ${c}`).join('; ');
-        return [this.el('div', { class: cls('grid', n.class), style }, kids())];
+        const style = cols.map((c, i) => `--myst-grid-cols-${i}: ${c}`).join('; ');
+        return [this.el('div', { class: cls('myst-grid', n.class), style }, kids())];
       }
       case 'tabSet': {
         const set = ++this.tabSets;
@@ -669,7 +689,7 @@ class MystRenderer {
         return [
           this.el(
             'div',
-            { class: 'tab-set' },
+            { class: 'myst-tabs' },
             items.flatMap((item, i) => [
               this.el('input', {
                 type: 'radio',
@@ -678,27 +698,27 @@ class MystRenderer {
                 checked: i === selected,
               }),
               this.el('label', { htmlFor: `tabset-${set}-${i}` }, item.title ?? `Tab ${i + 1}`),
-              this.el('div', { class: 'tab-panel', role: 'tabpanel' }, this.all(item)),
+              this.el('div', { class: 'myst-tab-panel', role: 'tabpanel' }, this.all(item)),
             ]),
           ),
         ];
       }
       case 'tabItem':
-        return [this.el('div', { class: 'tab-panel' }, kids())];
+        return [this.el('div', { class: 'myst-tab-panel' }, kids())];
       case 'div':
         return [this.el('div', { class: n.class, style: n.style }, kids())];
       case 'span':
         return [this.el('span', { class: n.class, style: n.style }, kids())];
       case 'si':
-        return [this.el('span', { class: 'si', title: n.alt }, n.value ?? toText(n))];
+        return [this.el('span', { class: 'myst-si', title: n.alt }, n.value ?? toText(n))];
       case 'button':
-        return [this.el('a', { class: 'button', href: n.url }, kids())];
+        return [this.el('a', { class: 'myst-button', href: n.url }, kids())];
 
       // ----- notebooks ---------------------------------------------------------
       case 'outputs':
-        return [this.el('div', { class: 'outputs', id: n.identifier ? id : undefined }, kids())];
+        return [this.el('div', { class: 'myst-outputs', id: n.identifier ? id : undefined }, kids())];
       case 'output': {
-        if (n.children?.length) return [this.el('div', { class: 'output' }, kids())];
+        if (n.children?.length) return [this.el('div', { class: 'myst-output' }, kids())];
         // mystmd >= 1.7 stores one nbformat output in `jupyter_data`; older versions a list in `data`.
         const outputs: any[] = n.jupyter_data ? [n.jupyter_data] : Array.isArray(n.data) ? n.data : [];
         return outputs.flatMap((o) => this.jupyterOutput(o));
@@ -739,18 +759,18 @@ class MystRenderer {
     };
     if (o.output_type === 'stream') {
       const text = (o.path && this.opts.readAsset?.(o.path)) ?? join(o.text);
-      return [this.el('pre', { class: cls('output-stream', o.name) }, text)];
+      return [this.el('pre', { class: cls('myst-output-stream', o.name) }, text)];
     }
     if (o.output_type === 'error') {
       // biome-ignore lint/suspicious/noControlCharactersInRegex: strips ANSI colour codes from Jupyter tracebacks
       const trace = join(o.traceback).replace(/\u001b\[[0-9;]*m/g, '');
-      return [this.el('pre', { class: 'output-error' }, trace || `${o.ename}: ${o.evalue}`)];
+      return [this.el('pre', { class: 'myst-output-error' }, trace || `${o.ename}: ${o.evalue}`)];
     }
     const bundle = o.data ?? {};
     const mime = Object.keys(bundle).find((k) => k.startsWith('image/'));
     if (mime && bundle[mime]?.path) {
       return [
-        this.el('div', { class: 'output' }, [
+        this.el('div', { class: 'myst-output' }, [
           this.el('img', {
             src: this.opts.resolveAssetUrl(bundle[mime].path),
             alt: content(bundle['text/plain']) ?? 'Output',
@@ -763,31 +783,31 @@ class MystRenderer {
         mime === 'image/svg+xml'
           ? `data:${mime};utf8,${encodeURIComponent(content(bundle[mime])!)}`
           : `data:${mime};base64,${content(bundle[mime])}`;
-      return [this.el('div', { class: 'output' }, [this.el('img', { src, alt: 'Output' })])];
+      return [this.el('div', { class: 'myst-output' }, [this.el('img', { src, alt: 'Output' })])];
     }
     const html = content(bundle['text/html']);
-    if (html !== undefined) return [this.el('div', { class: 'output output-html' }, [raw(html)])];
+    if (html !== undefined) return [this.el('div', { class: 'myst-output myst-output-html' }, [raw(html)])];
     if (bundle['text/html']?.path) {
       return [
-        this.el('div', { class: 'output' }, [
+        this.el('div', { class: 'myst-output' }, [
           this.el('a', { href: this.opts.resolveAssetUrl(bundle['text/html'].path) }, 'Open output'),
         ]),
       ];
     }
     const latex = content(bundle['text/latex']);
-    if (latex !== undefined) return [this.el('pre', { class: 'output' }, latex)];
+    if (latex !== undefined) return [this.el('pre', { class: 'myst-output' }, latex)];
     const plain = content(bundle['text/plain']);
-    if (plain !== undefined) return [this.el('pre', { class: 'output' }, plain)];
+    if (plain !== undefined) return [this.el('pre', { class: 'myst-output' }, plain)];
     return [];
   }
 
   footnotesSection(): HastChild[] {
     if (!this.footnotes.size) return [];
-    const title = this.opts.footnotesTitle ?? 'Footnotes';
+    const title = this.opts.labels?.footnotes ?? 'Footnotes';
     const items = [...this.footnotes.entries()].sort((a, b) => Number(a[1].enumerator) - Number(b[1].enumerator));
     return [
-      this.el('section', { class: 'footnotes', ariaLabel: title }, [
-        this.el('h2', { class: 'footnotes-title' }, title),
+      this.el('section', { class: 'myst-footnotes', ariaLabel: title }, [
+        this.el('h2', { class: 'myst-footnotes-title' }, title),
         this.el(
           'ol',
           null,
@@ -795,7 +815,7 @@ class MystRenderer {
             const content = this.all(node);
             const backref = this.el(
               'a',
-              { class: 'footnote-backref', href: `#fnref-${key}`, ariaLabel: 'Back to text' },
+              { class: 'myst-footnote-backref', href: `#fnref-${key}`, ariaLabel: 'Back to text' },
               '↩',
             );
             const last = content[content.length - 1];
@@ -811,20 +831,18 @@ class MystRenderer {
   bibliographySection(): HastChild[] {
     const cite = this.page.references?.cite;
     if (!cite?.order?.length) return [];
-    const title = this.opts.bibliographyTitle ?? 'References';
+    const title = this.opts.labels?.references ?? 'References';
     return [
-      this.el('section', { class: 'bibliography', ariaLabel: title }, [
+      this.el('section', { class: 'myst-bibliography', ariaLabel: title }, [
         this.el('h2', null, title),
         this.el(
           'ol',
-          { class: cls('bibliography-list', this.opts.numberedReferences && 'numbered') },
+          { class: cls('myst-bibliography-list', this.opts.numberedCitations && 'myst-numbered') },
           cite.order.map((label, i) => {
             const num = cite.data[label]?.enumerator ?? String(i + 1);
-            return this.el(
-              'li',
-              { id: citeId(label), dataEnumerator: this.opts.numberedReferences ? num : undefined },
-              [raw(cite.data[label]?.html ?? label)],
-            );
+            return this.el('li', { id: citeId(label), dataEnumerator: this.opts.numberedCitations ? num : undefined }, [
+              raw(cite.data[label]?.html ?? label),
+            ]);
           }),
         ),
       ]),

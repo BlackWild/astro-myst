@@ -24,33 +24,37 @@ describe('LaTeX content (.tex pages)', () => {
     const { html, headings } = await renderMystPage(paper, opts);
     // \begin{abstract} becomes a document part
     expect(html).toContain(
-      '<section class="myst-part myst-part-abstract" data-part="abstract"><h2 class="part-title">Abstract</h2><p>An abstract written in TeX.</p></section>',
+      '<section class="myst-part myst-part-abstract" data-part="abstract"><h2 class="myst-part-title">Abstract</h2><p>An abstract written in TeX.</p></section>',
     );
     // \label / \eqref / numbered equation, theorem and figure
-    expect(html).toMatch(/<div class="math-display" id="eq-main">.*<span class="equation-number">\(1\)<\/span><\/div>/);
-    expect(html).toContain('<a class="xref" href="#eq-main" data-xref-kind="equation">(1)</a>');
+    expect(html).toMatch(
+      /<div class="myst-math-display" id="eq-main">.*<span class="myst-equation-number">\(1\)<\/span><\/div>/,
+    );
+    expect(html).toContain('<a class="myst-xref" href="#eq-main" data-xref-kind="equation">(1)</a>');
     expect(html).toContain(
-      '<aside class="proof proof-theorem" id="thm-tex"><div class="proof-title"><strong>Theorem 1</strong></div>',
+      '<aside class="myst-proof myst-proof-theorem" id="thm-tex"><div class="myst-proof-title"><strong>Theorem 1</strong></div>',
     );
     expect(html).toMatch(
-      /<figure id="fig-tex" class="myst-container myst-figure numbered"[^>]*><img src="\/_myst\/dot-[0-9a-f]+\.svg"/,
+      /<figure id="fig-tex" class="myst-container myst-figure myst-numbered"[^>]*><img src="\/_myst\/dot-[0-9a-f]+\.svg"/,
     );
     // \ref into the Markdown page, \cite from refs.bib, \footnote, \input{methods}, siunitx
     expect(html).toContain(
-      '<a class="xref" href="/notes#fig-md" data-xref-kind="figure" data-xref-remote="true">1</a>',
+      '<a class="myst-xref" href="/notes#fig-md" data-xref-kind="figure" data-xref-remote="true">1</a>',
     );
-    expect(html).toContain('<a class="cite" href="#cite-knuth1984" data-cite="knuth1984">Knuth (1984)</a>');
+    expect(html).toContain('<a class="myst-cite" href="#cite-knuth1984" data-cite="knuth1984">Knuth (1984)</a>');
     expect(html).toContain('<li id="cite-knuth1984">');
-    expect(html).toMatch(/<section class="footnotes"[^>]*>.*TeX footnote\./);
+    expect(html).toMatch(/<section class="myst-footnotes"[^>]*>.*TeX footnote\./);
     expect(headings.map((h) => h.slug)).toEqual(['sec-intro', 'sec-methods']);
-    expect(html).toContain('<span class="si" title="milli second">3.0');
+    expect(html).toContain('<span class="myst-si" title="milli second">3.0');
     // \newcommand text macros are expanded, \citep is parenthetical
-    expect(html).toContain('Every TeX theorem in Astro-MyST gets a number <span class="cite-group">(<a class="cite"');
+    expect(html).toContain(
+      'Every TeX theorem in Astro-MyST gets a number <span class="myst-cite-group">(<a class="myst-cite"',
+    );
 
     // ... and the Markdown page references the LaTeX labels (colons in labels are fine)
     const notes = await renderMystPage(build.pages.get('notes')!, opts);
     expect(notes.html).toContain(
-      '<a class="xref" href="/paper#eq-main" data-xref-kind="equation" data-xref-remote="true">(1)</a>',
+      '<a class="myst-xref" href="/paper#eq-main" data-xref-kind="equation" data-xref-remote="true">(1)</a>',
     );
     expect(notes.html).toContain('href="/paper#fig-tex"');
     expect(notes.html).toContain('href="/paper#thm-tex"');

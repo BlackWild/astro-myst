@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import myst, { type MystOptions } from '../src/integration.js';
 import type { MystLogger } from '../src/types.js';
 
 export const FIXTURES = fileURLToPath(new URL('./fixtures/', import.meta.url));
@@ -23,4 +24,15 @@ export function memoryLogger() {
     debug: (msg) => messages.push({ level: 'debug', msg }),
   };
   return { logger, messages };
+}
+
+/** Run the integration's astro:config:setup hook, as Astro does before loading collections. */
+export function setupIntegration(options: MystOptions = {}, base = '/') {
+  const integration = myst(options);
+  const scripts: [string, string][] = [];
+  (integration.hooks['astro:config:setup'] as (params: unknown) => void)({
+    config: { base },
+    injectScript: (stage: string, code: string) => scripts.push([stage, code]),
+  });
+  return { integration, scripts };
 }
