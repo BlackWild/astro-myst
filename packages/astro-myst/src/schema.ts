@@ -10,6 +10,15 @@ const author = z
   })
   .catchall(z.unknown());
 
+/** A file to download: from the frontmatter `downloads`, or exported with the `exports` option. */
+const download = z.object({
+  title: z.string(),
+  url: z.string(),
+  filename: z.string().optional(),
+  /** Export format such as `"pdf"`, for exported files. */
+  format: z.string().optional(),
+});
+
 /**
  * Data of a MyST entry: the page's frontmatter (keys MyST knows, such as `title`, `authors` or
  * `date`, as normalized by MyST; any other keys as written) plus `myst`, computed by the loader.
@@ -46,6 +55,17 @@ export const mystSchema = z
       enumerator: z.string().optional(),
       /** `"Article"`, or `"Notebook"` for Jupyter notebooks. */
       kind: z.string(),
+      /**
+       * The toc groups and parent pages containing the page, outermost first: `{ title }` for a group
+       * (a toc entry without a file), `{ title, id }` for a page. See `mystNavigation()`.
+       */
+      parents: z.array(z.object({ title: z.string(), id: z.string().optional() })).default([]),
+      /** HTML of each part given in the frontmatter (`abstract`, `acknowledgments`, ...); the page's HTML includes them too. */
+      parts: z.record(z.string(), z.string()).optional(),
+      /** Files listed in the frontmatter `downloads`, with URLs where the site serves them. */
+      downloads: z.array(download).optional(),
+      /** Files exported with the `exports` option: this page's, then the whole collection's. */
+      exports: z.array(download.extend({ format: z.string(), scope: z.enum(['page', 'collection']) })).optional(),
     }),
   })
   .catchall(z.unknown());

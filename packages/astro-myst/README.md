@@ -10,9 +10,11 @@
 - cross-references that resolve **across pages** (`@fig-signal`, `{eq}`, `{numref}`, `[](#label)`), with hover previews
 - citations from BibTeX or straight from DOIs (`<doi:…>`), with a bibliography on every page; footnotes
 - math rendered with KaTeX at build time, admonitions, dropdowns, tabs, grids, cards, proofs, glossaries
-- LaTeX documents (`.tex`) and Jupyter notebooks (`.ipynb`) as pages, with the same numbering and references
+- LaTeX documents (`.tex`) and Jupyter notebooks (`.ipynb`) as pages, with the same numbering and references, and optional execution
+- exports of every page or a whole collection to PDF (LaTeX or Typst), Word, LaTeX, Markdown and JATS, served as downloads
+- navigation data: the table of contents as a tree with groups, previous/next pages and breadcrumbs
 
-No `myst.yml` needed: MyST options live in your Astro config. Entries work with `getCollection()`, `render()` and `<Content />` like Astro's own Markdown, keep your own frontmatter for your schemas, and nothing is generated next to your content or in `public/`. Layout, navigation and styling are entirely yours — the default styles only make MyST content work, and they never fight your CSS, Tailwind or `prose`.
+No `myst.yml` needed: MyST options live in your Astro config. Entries work with `getCollection()`, `render()` and `<Content />` like Astro's own Markdown, keep your own frontmatter for your schemas, and nothing is generated next to your content or in `public/`. Layout, navigation and styling are entirely yours — the default styles only make MyST content work, and they never fight your CSS, Tailwind or `prose`. Optional: a small theme, and scripts for copy buttons on code, Mermaid diagrams and synchronized tabs. See which [MyST features are supported](https://blackwild.github.io/astro-myst/reference/myst-features).
 
 📖 **[Documentation](https://blackwild.github.io/astro-myst/)** — [getting started](https://blackwild.github.io/astro-myst/getting-started) · [options](https://blackwild.github.io/astro-myst/reference/options) · [examples](https://github.com/BlackWild/astro-myst/tree/main/examples)
 

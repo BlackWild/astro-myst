@@ -253,3 +253,75 @@ describe('notebook execution', () => {
     expect(sourceFileOf('/index.md', projectDir, baseDir)).toBeUndefined(); // the placeholder
   });
 });
+
+describe('exports', () => {
+  it('declares project exports with outputs in the generated project', async () => {
+    const root = tmp();
+    const baseDir = path.join(root, 'src', 'content', 'book');
+    const projectDir = path.join(root, 'node_modules', '.astro', 'astro-myst', 'book');
+    touch(path.join(root, 'templates', 'mine', 'template.yml'));
+    const config = await createProjectConfig({
+      collection: 'book',
+      astroRoot: root,
+      baseDir,
+      projectDir,
+      project: {},
+      sources: ['index.md', 'ch/one.md'],
+      exports: {
+        pages: ['md'],
+        collection: ['pdf', 'typst'],
+        templates: { pdf: 'templates/mine', typst: 'lapreprint-typst' },
+      },
+    });
+    const rel = (f: string) => `../../../../src/content/book/${f}`;
+    expect(parseYaml(config.yaml).project.exports).toEqual([
+      {
+        id: 'astro-myst-md-0',
+        format: 'md',
+        articles: [rel('index.md')],
+        output: '_build/exports/astro-myst/md/index.md',
+      },
+      {
+        id: 'astro-myst-md-1',
+        format: 'md',
+        articles: [rel('ch/one.md')],
+        output: '_build/exports/astro-myst/md/ch/one.md',
+      },
+      {
+        id: 'astro-myst-pdf-collection',
+        format: 'pdf',
+        template: '../../../../templates/mine',
+        articles: [rel('index.md'), rel('ch/one.md')],
+        output: '_build/exports/astro-myst/pdf/book.pdf',
+      },
+      {
+        id: 'astro-myst-typst-collection',
+        format: 'typst',
+        template: 'lapreprint-typst',
+        articles: [rel('index.md'), rel('ch/one.md')],
+        output: '_build/exports/astro-myst/typst/book.pdf',
+      },
+    ]);
+    expect(config.exports).toEqual([
+      {
+        format: 'md',
+        scope: 'page',
+        source: path.join(baseDir, 'index.md'),
+        output: path.join(projectDir, '_build/exports/astro-myst/md/index.md'),
+      },
+      {
+        format: 'md',
+        scope: 'page',
+        source: path.join(baseDir, 'ch', 'one.md'),
+        output: path.join(projectDir, '_build/exports/astro-myst/md/ch/one.md'),
+      },
+      { format: 'pdf', scope: 'collection', output: path.join(projectDir, '_build/exports/astro-myst/pdf/book.pdf') },
+      {
+        format: 'typst',
+        scope: 'collection',
+        output: path.join(projectDir, '_build/exports/astro-myst/typst/book.pdf'),
+      },
+    ]);
+    expect(config.inputs).toContain(path.join(root, 'templates', 'mine')); // watched and part of the cache key
+  });
+});

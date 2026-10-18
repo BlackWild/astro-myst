@@ -9,6 +9,7 @@ import { slug as githubSlug } from 'github-slugger';
 import { glob } from 'tinyglobby';
 import { parse as parseYaml, stringify as toYaml } from 'yaml';
 import { isInside } from './assets.js';
+import { EXPORT_FORMATS, type MystExportFormat, type ResolvedExports } from './exports.js';
 import type { MystProjectOptions } from './integration.js';
 
 /** Files of a collection by default: Markdown and notebooks, except names starting with `_` (e.g. included snippets). */
@@ -91,7 +92,23 @@ export interface ProjectSpec {
   project: MystProjectOptions;
   /** Whether mystmd executes notebooks (`--execute`): executable files are then listed through `SOURCE_LINK`. */
   execute?: boolean;
+  /** Files to export, declared as project exports of the generated project. */
+  exports?: ResolvedExports;
 }
+
+/** A file the generated project exports. */
+export interface PlannedExport {
+  format: MystExportFormat;
+  /** `page`: one page (`source`); `collection`: all pages. */
+  scope: 'page' | 'collection';
+  /** Absolute path of the page's file, for page exports. */
+  source?: string;
+  /** Absolute path of the exported file, in the generated project. */
+  output: string;
+}
+
+/** Folder of the generated project where its exports are written; cleared before every build. */
+export const EXPORTS_DIR = path.join('_build', 'exports', 'astro-myst');
 
 export interface ProjectConfig {
   /** Contents of the generated myst.yml. */
@@ -102,6 +119,8 @@ export interface ProjectConfig {
   inputs: string[];
   /** Folder that `SOURCE_LINK` must point to, when executable files are listed through it. */
   link?: string;
+  /** The files the project exports. */
+  exports: PlannedExport[];
 }
 
 const isUrl = (value: string) => /^[a-z][a-z0-9+.-]*:/i.test(value);
@@ -186,22 +205,64 @@ export async function createProjectConfig(spec: ProjectSpec): Promise<ProjectCon
   // Executed notebooks are listed through the link to the collection's folder, and so are all
   // other files in it, so that relative links between pages keep matching the paths mystmd knows.
   const link = spec.execute && files.some((abs) => isExecutable(abs, project)) ? spec.baseDir : undefined;
+  const tocPath = (abs: string) =>
+    link && isInside(abs, link) ? posix(path.join(SOURCE_LINK, path.relative(link, abs))) : toProject(abs);
   const relative = (entries: MystTocEntry[]) => {
     for (const entry of entries) {
-      if (typeof entry.file === 'string') {
-        entry.file =
-          link && isInside(entry.file, link)
-            ? posix(path.join(SOURCE_LINK, path.relative(link, entry.file)))
-            : toProject(entry.file);
-      }
+      if (typeof entry.file === 'string') entry.file = tocPath(entry.file);
       if (Array.isArray(entry.children)) relative(entry.children);
     }
   };
   relative(toc);
   if (placeholder) toc.unshift({ file: PLACEHOLDER_INDEX });
 
+  // Exports are project exports, so that their output paths are relative to the generated
+  // project (in page frontmatter they would be relative to the page, next to the content).
+  const planned: PlannedExport[] = [];
+  if (spec.exports) {
+    const { pages, collection, templates } = spec.exports;
+    const template = (format: MystExportFormat) => {
+      const value = templates[format];
+      if (!value || isUrl(value)) return value;
+      const abs = path.resolve(spec.astroRoot, value);
+      if (!fs.existsSync(abs)) return value; // a template name
+      inputs.push(abs);
+      return toProject(abs);
+    };
+    const declared: Record<string, unknown>[] = [];
+    const declare = (format: MystExportFormat, id: string, articles: string[], name: string) => {
+      const output = posix(path.join(EXPORTS_DIR, format, `${name}${EXPORT_FORMATS[format].ext}`));
+      declared.push(
+        Object.fromEntries(
+          Object.entries({
+            id,
+            format: EXPORT_FORMATS[format].format,
+            template: template(format),
+            articles,
+            output,
+          }).filter(([, v]) => v !== undefined),
+        ),
+      );
+      return path.join(spec.projectDir, output);
+    };
+    const pageFiles = files.filter((abs) => isInside(abs, spec.baseDir));
+    pageFiles.forEach((abs, i) => {
+      const name = posix(path.relative(spec.baseDir, abs)).replace(/\.[^./]+$/, '');
+      for (const format of pages) {
+        const output = declare(format, `astro-myst-${format}-${i}`, [tocPath(abs)], name);
+        planned.push({ format, scope: 'page', source: abs, output });
+      }
+    });
+    for (const format of collection) {
+      const name = spec.collection.replace(/[^\w.-]+/g, '-');
+      const output = declare(format, `astro-myst-${format}-collection`, pageFiles.map(tocPath), name);
+      planned.push({ format, scope: 'collection', output });
+    }
+    project.exports = [...(Array.isArray(project.exports) ? project.exports : []), ...declared];
+  }
+
   const yaml = toYaml({ version: 1, project: { ...project, toc }, site: {} });
-  return { yaml, placeholder, inputs, link };
+  return { yaml, placeholder, inputs, link, exports: planned };
 }
 
 /**

@@ -7,5 +7,7 @@ export default defineConfig({
   site: process.env.DOCS_SITE ?? 'https://blackwild.github.io',
   base: process.env.DOCS_BASE ?? '/astro-myst',
   trailingSlash: 'ignore',
-  integrations: [myst({ styles: 'theme' })],
+  integrations: [myst({ styles: 'theme', scripts: { copyCode: true, mermaid: true } })],
+  // Mermaid's own chunks are large; they load only on pages with a diagram.
+  vite: { build: { chunkSizeWarningLimit: 1500 } },
 });

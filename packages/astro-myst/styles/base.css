@@ -61,6 +61,28 @@
     opacity: 0.5;
   }
 
+  /* Copy buttons, added to code blocks by the copyCode script: top right, shown on hover. */
+  :where(.myst-code-wrapper) {
+    position: relative;
+  }
+  :where(.myst-code-copy) {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  :where(.myst-code-wrapper:hover .myst-code-copy, .myst-code-copy:focus-visible) {
+    opacity: 1;
+  }
+  @media (hover: none) {
+    :where(.myst-code-copy) {
+      opacity: 1;
+    }
+  }
+
   /* Tabs work without JavaScript: radio buttons, one panel visible. */
   :where(.myst-tabs) {
     display: flex;

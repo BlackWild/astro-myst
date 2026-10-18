@@ -189,6 +189,16 @@
   :where(pre.myst-code-block:not(.shiki)) {
     background: var(--myst-surface);
   }
+  :where(.myst-code-copy) {
+    padding: 0.2rem 0.55rem;
+    border: 1px solid var(--myst-border);
+    border-radius: 4px;
+    background: var(--myst-surface);
+    color: var(--myst-muted);
+  }
+  :where(.myst-code-copy:hover) {
+    color: var(--myst-accent);
+  }
 
   /* Admonitions, dropdowns, proofs */
   :where(.myst-admonition) {
@@ -272,6 +282,23 @@
     border-top: 1px solid var(--myst-border);
   }
 
+  /* Buttons ({button} links); after the cross-reference rules, which they override */
+  :where(a.myst-button) {
+    display: inline-block;
+    padding: 0.35em 0.9em;
+    border: 1px solid var(--myst-accent);
+    border-radius: 6px;
+    background: var(--myst-accent);
+    color: var(--myst-surface);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  :where(a.myst-button:hover) {
+    filter: brightness(1.1);
+    text-decoration: none;
+  }
+
   /* Cards */
   :where(.myst-card) {
     padding: 0.8rem 1rem;
@@ -323,7 +350,9 @@
     text-indent: 0;
   }
 
-  /* Margin notes and sidebars */
+  /* Margin notes and sidebars float right. With the class "myst-margin-column" next to "myst" on
+     the content wrapper, margin notes hang in the page margin on wide screens, as in MyST's themes:
+     use it when the layout leaves room (--myst-margin-width plus 2rem) right of the content. */
   :where(.myst-aside-margin, .myst-aside-sidebar) {
     float: right;
     clear: right;
@@ -331,6 +360,12 @@
     margin: 0 0 1rem 1rem;
     color: var(--myst-muted);
     font-size: 0.85em;
+  }
+  @media (min-width: 1280px) {
+    :where(.myst-margin-column .myst-aside-margin) {
+      width: var(--myst-margin-width, 14rem);
+      margin-right: calc(-1 * var(--myst-margin-width, 14rem) - 2rem);
+    }
   }
 
   /* Notebook cells and outputs */

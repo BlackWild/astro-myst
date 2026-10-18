@@ -36,7 +36,8 @@
   "type": "module",
   "sideEffects": [
     "*.css",
-    "*.astro"
+    "*.astro",
+    "./dist/client/*.js"
   ],
   "exports": {
     ".": {
@@ -46,6 +47,10 @@
     "./loaders": {
       "types": "./dist/loaders.d.ts",
       "default": "./dist/loaders.js"
+    },
+    "./client/*": {
+      "types": "./dist/client/*.d.ts",
+      "default": "./dist/client/*.js"
     },
     "./base.css": "./styles/base.css",
     "./theme.css": "./styles/theme.css",
@@ -79,10 +84,14 @@
   },
   "peerDependencies": {
     "astro": "^5.0.0 || ^6.0.0 || ^7.0.0",
-    "mystmd": "^1.3.0"
+    "mystmd": "^1.3.0",
+    "mermaid": "^10.0.0 || ^11.0.0"
   },
   "peerDependenciesMeta": {
     "mystmd": {
+      "optional": true
+    },
+    "mermaid": {
       "optional": true
     }
   },

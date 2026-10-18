@@ -224,7 +224,7 @@ describe('renderMystPage', () => {
     expect(html).toContain('<a href="/docs/_myst/paper-abc.pdf">pdf</a>');
     expect(html).toContain('<a href="https://mystmd.org" target="_blank" rel="noopener noreferrer">ext</a>');
     expect(html).toContain('<a href="/about">astro route</a>');
-    expect(html).toContain('class="button"');
+    expect(html).toContain('class="button myst-button"');
   });
 
   it('links references into external MyST sites with their base URL', async () => {
@@ -400,6 +400,75 @@ describe('renderMystPage', () => {
     );
     expect(html).toContain('<pre class="myst-output-stream stdout">full log</pre>');
     expect(html).toContain('<div class="myst-output myst-output-html"><table><tr><td>big</td></tr></table></div>');
+  });
+
+  it('typesets {si} units like siunitx', async () => {
+    const si = (units: string[], value = '') => ({ type: 'si', number: '9.81', units, value, alt: units.join(' ') });
+    const { html } = await render([
+      {
+        type: 'paragraph',
+        children: [
+          si(['metre', 'per', 'second', 'squared']),
+          si(['kilo', 'gram']),
+          si(['square', 'centi', 'metre']),
+          si(['furlong', 'per', 'fortnight'], '9.81 furlongperfortnight'),
+        ],
+      },
+    ]);
+    expect(html).toContain(
+      '<span class="myst-si" title="metre per second squared">9.81\u00a0m\u2009s<sup>−2</sup></span>',
+    );
+    expect(html).toContain('>9.81\u00a0kg</span>');
+    expect(html).toContain('>9.81\u00a0cm<sup>2</sup></span>');
+    expect(html).toContain('>9.81 furlongperfortnight</span>'); // unknown units: mystmd's text
+  });
+
+  it('renders {toc} lists as navigation, not as a document part', async () => {
+    const { html } = await render([
+      {
+        type: 'block',
+        data: { part: 'toc:project' },
+        children: [
+          {
+            type: 'list',
+            children: [
+              { type: 'listItem', children: [{ type: 'link', url: '/', internal: true, children: [t('Home')] }] },
+            ],
+          },
+        ],
+      },
+    ]);
+    expect(html).toBe(
+      '<nav class="myst-toc" data-toc-context="project"><ul><li><a href="/docs/">Home</a></li></ul></nav>',
+    );
+  });
+
+  it('renders {eval} results, {chem} formulas and {button} links', async () => {
+    const { html } = await render([
+      {
+        type: 'paragraph',
+        children: [
+          { type: 'inlineExpression', value: 'x', children: [t('42')] },
+          { type: 'inlineExpression', value: 'y', result: { status: 'ok', data: { 'text/plain': '7' } } },
+          { type: 'chemicalFormula', value: 'C6H12O6' },
+          { type: 'link', url: 'https://example.org', class: 'button', children: [t('Go')] },
+          {
+            type: 'crossReference',
+            resolved: true,
+            identifier: 'thm',
+            html_id: 'thm',
+            kind: 'proof:theorem',
+            class: 'button',
+            children: [t('Theorem')],
+          },
+        ],
+      },
+    ]);
+    expect(html).toContain('<span class="myst-eval" data-expression="x">42</span>');
+    expect(html).toContain('<span class="myst-eval" data-expression="y">7</span>');
+    expect(html).toContain('<span class="myst-chem">C<sub>6</sub>H<sub>12</sub>O<sub>6</sub></span>');
+    expect(html).toContain('<a href="https://example.org" class="button myst-button" target="_blank"');
+    expect(html).toContain('<a class="myst-xref button myst-button" href="#thm" data-xref-kind="proof:theorem">');
   });
 
   it('escapes text and never crashes on unknown nodes', async () => {
