@@ -16,7 +16,9 @@ const RULES = [
   { file: /^\.changeset\/[^/]+\.md$/, lines: null },
   { file: /(^|\/)CHANGELOG\.md$/, lines: null },
   { file: /(^|\/)package\.json$/, lines: /^\s*"version": "[^"]+",?$/ },
-  { file: /^package-lock\.json$/, lines: /^\s*"version": "[^"]+",?$/ },
+  // `npm install --package-lock-only` also normalizes the dependency-type flags of entries; they
+  // change no installed version.
+  { file: /^package-lock\.json$/, lines: /^\s*("version": "[^"]+"|"(dev|optional|devOptional|peer)": true),?$/ },
   { file: /^packages\/astro-myst\/src\/version\.ts$/, lines: /^export const VERSION = '[^']+';$/ },
 ];
 
