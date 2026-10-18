@@ -92,7 +92,7 @@ Use [Changesets pre-release mode](https://changesets.dev/guide/prereleases): `np
 
 - **Dependabot** opens grouped pull requests every Monday.
 - **KaTeX**: `katex` is a dependency only for its stylesheet; mystmd renders math with its own bundled KaTeX, and KaTeX renames its classes between versions. So `katex` is pinned to exactly the version mystmd bundles, and Dependabot ignores it. When a mystmd update bundles a different KaTeX, `test/katex.test.ts` fails on that pull request and names the version to pin in `packages/astro-myst/package.json`. KaTeX's security advisories concern its JavaScript, which astro-myst never runs; dismiss those alerts as "Vulnerable code is not actually used".
-- **mystmd** updates: the compatibility job builds the book example against old and new mystmd versions. When mystmd changes its page format (`version` in `_build/site/content/*.json`), update `SUPPORTED_PAGE_VERSIONS` in `packages/astro-myst/src/compile.ts` after testing.
+- **mystmd** updates: the compatibility job builds the book example against old and new mystmd versions. When mystmd changes its page format (`version` in `_build/site/content/*.json` of the generated projects in `node_modules/.astro/astro-myst/`), update `SUPPORTED_PAGE_VERSIONS` in `packages/astro-myst/src/compile.ts` after testing.
 - **Astro** majors: add the new major to the `compat` matrix in `ci.yml` and to `peerDependencies`.
 - **Node.js**: `.node-version` sets the version used by most CI jobs; the test matrix covers the maintained LTS lines.
 - **GitHub Actions** are pinned to commit SHAs (with the version in a comment); Dependabot updates them.

@@ -22,7 +22,7 @@ citations, math, LaTeX sources and Jupyter notebooks, compiled by the official [
 
 ## Why
 
-Astro renders Markdown one file at a time, so it cannot number a figure in one file and reference it from another. [MyST](https://mystmd.org) — the toolchain behind Jupyter Book — is built for exactly that. **astro-myst** is an Astro content loader that runs the MyST compiler on your project and turns every page into a content collection entry, with everything resolved:
+Astro renders Markdown one file at a time, so it cannot number a figure in one file and reference it from another. [MyST](https://mystmd.org) — the toolchain behind Jupyter Book — is built for exactly that. **astro-myst** is an Astro integration and content loader that compiles a folder of MyST files with the official compiler and turns every file into a content collection entry, with everything resolved:
 
 - automatic numbering of sections, figures, sub-figures, tables, equations, code listings and theorems
 - cross-references that work **across pages**, with hover previews
@@ -30,7 +30,7 @@ Astro renders Markdown one file at a time, so it cannot number a figure in one f
 - KaTeX math rendered at build time, admonitions, tabs, cards, grids, proofs, footnotes, glossaries
 - **LaTeX** (`.tex`) and **Jupyter notebook** (`.ipynb`) pages next to Markdown ones
 
-Your layout, routing and styling stay entirely yours: entries work with `getCollection()`, `render()` and `<Content />` like any other Astro content.
+It fits into Astro like its own Markdown support: **no `myst.yml`** (MyST options go in your Astro config), your own frontmatter and schemas, entries that work with `getCollection()`, `render()` and `<Content />`, images served by the dev server and exported with the build — nothing is generated next to your content or in `public/`. The default styles only make MyST content work and never fight your CSS, so it pairs well with Tailwind and `prose` for blogs, and an optional theme is one option away.
 
 ## Quick start
 
@@ -39,38 +39,46 @@ npm install astro-myst mystmd
 ```
 
 ```ts
+// astro.config.ts
+import { defineConfig } from 'astro/config';
+import myst from 'astro-myst';
+
+export default defineConfig({
+  integrations: [myst()],
+});
+```
+
+```ts
 // src/content.config.ts
 import { defineCollection } from 'astro:content';
-import { mystLoader } from 'astro-myst';
+import { mystLoader } from 'astro-myst/loaders';
 
 export const collections = {
-  docs: defineCollection({ loader: mystLoader({ root: './content' }) }),
+  blog: defineCollection({ loader: mystLoader({ base: './src/content/blog' }) }),
 };
 ```
 
 ```astro
 ---
-// src/pages/[...slug].astro
+// src/pages/blog/[...slug].astro
 import { getCollection, render } from 'astro:content';
-import 'astro-myst/katex.css';
-import 'astro-myst/styles.css';
 
 export async function getStaticPaths() {
-  const pages = await getCollection('docs');
-  return pages.map((page) => ({ params: { slug: page.data.path || undefined }, props: { page } }));
+  const posts = await getCollection('blog');
+  return posts.map((post) => ({ params: { slug: post.id }, props: { post } }));
 }
 
-const { page } = Astro.props;
-const { Content } = await render(page);
+const { post } = Astro.props;
+const { Content } = await render(post);
 ---
 
-<article class="myst">
-  <h1>{page.data.title}</h1>
+<article>
+  <h1>{post.data.title}</h1>
   <Content />
 </article>
 ```
 
-`content/` is a regular MyST project with a `myst.yml` (it needs a `site:` section; `site: {}` is enough). Follow the [getting started guide](https://blackwild.github.io/astro-myst/getting-started) for the details.
+Every `.md` and `.ipynb` file in `src/content/blog` becomes an entry; the files are compiled together, so they can reference each other's figures and equations. Follow the [getting started guide](https://blackwild.github.io/astro-myst/getting-started) for the details, and the [options reference](https://blackwild.github.io/astro-myst/reference/options) for numbering, citations, tables of contents and styles.
 
 ## Examples
 

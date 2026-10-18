@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-astro-myst is an Astro content loader for MyST Markdown. It does **not** parse MyST itself: it runs the official `mystmd` CLI (`myst build --site`), reads the fully resolved per-page JSON AST that mystmd writes to `<mystRoot>/_build/site/`, renders that AST to HTML and stores one Astro content entry per page. All MyST semantics (numbering, cross-page references, citations and DOIs, KaTeX, includes, notebooks, LaTeX parsing) come from mystmd; this package maps nodes to HTML and rewrites MyST URLs into Astro URLs.
+astro-myst brings MyST Markdown to Astro as an **integration plus a content loader**. It does **not** parse MyST itself: for each collection it generates a MyST project in Astro's cache folder, runs the official `mystmd` CLI (`myst build --site`) on it, reads the fully resolved per-page JSON AST, renders it to HTML and stores one content-layer entry per file. All MyST semantics (numbering, cross-page references, citations and DOIs, KaTeX, includes, notebooks, LaTeX parsing) come from mystmd; this package maps nodes to HTML, rewrites MyST URLs into Astro URLs and handles assets. Users never write a `myst.yml`, and nothing is written next to their content or into `public/`.
 
 It is an npm-workspaces monorepo. The published package is `packages/astro-myst`. `examples/{minimal,book,paper}` and `docs/` (the documentation site, written in MyST and rendered by astro-myst itself) import the package's **built** `dist/`, so run `npm run build` before building or type-checking them.
 
@@ -16,53 +16,53 @@ Node >= 22.12, npm >= 10.9. Run from the repo root.
 npm ci && npm run build        # the build is required before docs/examples/typecheck
 npm run lint                   # Biome lint + format check (lint:fix applies fixes)
 npm run typecheck              # tsc for the package and e2e, astro check for docs and examples
-npm test                       # vitest; integration tests run the real mystmd (~15 s)
-npm test -w astro-myst -- test/urls.test.ts -t "folder slugs"   # one file / one test
+npm test                       # vitest; integration tests run the real mystmd (~20 s)
+npm test -w astro-myst -- test/urls.test.ts -t "routeFor"   # one file / one test
 npm run test:coverage          # thresholds in packages/astro-myst/vitest.config.ts
-npm run examples:build && npm run docs:build && npm run test:e2e  # Playwright against the built sites
+npm run examples:build && npm run docs:build && npm run test:e2e  # Playwright: built sites + the minimal example in `astro dev`
 npm run check:package          # publint + Are the Types Wrong
 npm run dev -w astro-myst-example-book   # live example (npm run docs:dev for the docs)
 ```
 
-In Claude Code cloud containers, point Playwright at the preinstalled browser instead of downloading one: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e`.
+In Claude Code cloud containers, point Playwright at the preinstalled browser instead of downloading one: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e`. Astro 7's `astro dev` may detach into a background daemon there; use `npx astro dev status|logs|stop` in the example folder to inspect or stop it.
+
+## Public API
+
+- `astro-myst` (root, kept light for astro.config: ~15 ms to import): default export `myst(options)` integration, types, `VERSION`.
+- `astro-myst/loaders` (imported by `src/content.config.ts`, like `@astrojs/starlight/loaders`): `mystLoader`, `mystSchema`, `renderMystPage`, `compileMystProject`, `readMystBuild`. The loader imports the compiler and renderer **statically**: Astro 5 closes the Vite module runner that evaluated the content config before loaders run, so `import()` inside `load()` fails there.
+- Stylesheets `astro-myst/base.css`, `/theme.css`, `/katex.css`; component `astro-myst/XrefPreview.astro`.
 
 ## Architecture (`packages/astro-myst/src`)
 
-Pipeline: **compile** (mystmd) → **render** (AST → HTML) → **store** (content layer) → **copy assets** (to `public/<assetsDir>`).
+Pipeline per collection: **discover files** → **generate project** → **compile** (mystmd) → **render** (AST → HTML) → **publish assets** → **store**.
 
-- `compile.ts` runs mystmd.
-  - `resolveCommand`: the `command` option, else the `mystmd` npm package resolved from the Astro root, the MyST root, then astro-myst's own folder (run as `node <bin>`), else `myst` on PATH.
-  - Seeds a stub site template in `_build/templates/…` (marked by `.astro-myst-stub`) so `myst build --site` never downloads MyST's React theme, and removes it afterwards. A real template is never touched.
-  - Wipes `_build/site` before every build and serializes builds per root with an in-process lock. mystmd output lines starting with `⚠️` become warnings, `⛔`/`error` become errors.
-  - `readMystBuild` reads `config.json` (projects, TOC) and `content/**/*.json` (pages keyed `<slug>`, or `<project>/<slug>` for multi-project sites), and warns on a page `version` outside `SUPPORTED_PAGE_VERSIONS`. `site.options` and `site.projects[].path` are read from `myst.yml` directly because `config.json` drops them.
-- `loader.ts` is `mystLoader()`, the Astro Content Layer loader.
-  - Cache key: path, size and mtime of every file under the MyST root and `extraInputs`, plus the package version, mystmd label and args, kept in the loader's `meta`. Astro's `public/`, `outDir`, `cacheDir` and `node_modules` are excluded (unless they contain the MyST root), as is `myst.doi.bib` under `--doi-bib`. Anything written during a build must be excluded, or `astro dev` rebuilds in a loop.
-  - Loads one project (`project` option, default the first); `order` and `level` come from the MyST TOC. Maps MyST page URLs (`/theory`) to Astro URLs via `urls.ts`, honouring Astro `base`, `trailingSlash` and the `routeBase` option.
-  - `sync()` renders every page before mutating anything, then replaces `public/<assetsDir>` (validated to stay inside `public/`, because it is deleted recursively) and clears and refills the store. Without a watcher (`astro build`) errors throw with an `[astro-myst]` prefix; with a watcher (`astro dev`) they are logged and the previous entries stay.
-  - In dev, any change triggers a full recompile (200 ms debounce, queued). This is intentional: numbering is global across pages.
-- `render.ts` holds `MystRenderer`, a large `switch` in `builtin()` that maps MyST node types to hast (hastscript), serialized with `hast-util-to-html` and `allowDangerousHtml` because mystmd supplies KaTeX and citation HTML as raw strings.
-  - `one()` applies notebook `visibility` (remove/hide). `render()` tries user `handlers` first: a handler returns `undefined` to fall back to the built-in renderer, `null` to render nothing, and can wrap built-in output with `ctx.renderDefault`.
-  - Unknown node types fall back to `div`/`span.myst-<type>`; rendering must never throw on new node types.
-  - Shiki highlighters are cached per theme pair at module level; `prepare()` loads only the languages a page uses.
-  - Footnotes and the bibliography are collected during the walk and appended to each page.
-  - Notebook outputs: both the mystmd >= 1.7 format (`jupyter_data`) and the older `data[]` list, plus large outputs that mystmd stores as files (`readAsset`).
-- `urls.ts` holds pure helpers. `slugToPath` mirrors mystmd's `slugToUrl`: with `site.options.folders: true`, `a.b` maps to `a/b` and `a.index` to `a`.
-- `components/XrefPreview.astro` is a client-side custom element. On hover or focus of `a.xref, a.cite` it fetches the target page, clones the element with the target id and shows it as a tooltip.
+- `integration.ts` — `myst(options)`. `astro:config:setup` stores options in the shared state and injects the stylesheets with `injectScript('page-ssr', …)` (`styles: 'base' | 'theme' | false`); `astro:server:setup` adds the dev middleware serving `<base>/_myst/<collection>/<file>`; `astro:build:generated` copies every collection's assets into the output (client dir for server output), with an idempotent repeat in `astro:build:done`. Copying in `build:generated` matters: adapters are unshifted to the front of the integration list, so their `build:done` (which packages the output) runs before ours.
+- `state.ts` — integration ↔ loader state on `globalThis[Symbol.for('astro-myst.state')]`: astro.config and content.config are separate module graphs, so module-level variables are not shared.
+- `project.ts` — `findSources` (tinyglobby; default pattern `**/[^_]*.{md,ipynb}`; `IGNORED_DIRS`), `readFrontmatter` (YAML core schema + timestamps, like Astro), `entryIdFromPath` (identical to Astro's `glob()` ids — tested against Astro's own function), `createProjectConfig` (the generated myst.yml: toc entries pointing at the files via relative paths, user `toc` mapping with `pattern` expansion and unlisted files appended, a placeholder `index.md` root page when the collection has no index, project-option file paths rewritten from Astro-root-relative to project-relative, `.bib` auto-discovery in `base`).
+- `loader.ts` — `mystLoader()` (`satisfies Loader` so collections infer data types). Requires the integration's state. Generated project lives in `<cacheDir>/astro-myst/<collection>/` (`myst.yml`, `_build/`, `assets/`). Cache: fingerprint of inputs (base + `extraInputs` + files referenced by `project`, by path/size/mtime) + VERSION + mystmd label + args + generated yaml, in the loader's `meta`; unchanged → `readMystBuild`. Two passes: map each page (`location` resolved from the project dir; placeholder skipped) to its source file, id and URL; then render, tracking assets used via `resolveAssetUrl` and building `data` = raw frontmatter + MyST-normalized keys + `myst: { url, order, level, enumerator, kind }`. `sync()` renders everything before mutating anything, then publishes used assets atomically into `assets/` and replaces the store. Without a watcher (`astro build`) errors throw with an `[astro-myst]` prefix; with one (`astro dev`) they are logged and the previous entries stay. Dev: any change under the inputs recompiles the collection (200 ms debounce, queued) — intentional, numbering is global.
+- `compile.ts` — runs mystmd (`resolveCommand`: `command` option, else the `mystmd` npm package from the Astro root / project / this package, else `myst` on PATH), seeds a stub site template so `myst build --site` never downloads MyST's React theme, wipes `_build/site`, serializes builds per project, classifies output (`⚠️` warn, `⛔`/`error` error; mystmd's "'frontmatter' extra keys ignored" warnings are hidden because those keys are the site's own). `readMystBuild` checks the page format `version` against `SUPPORTED_PAGE_VERSIONS`.
+- `render.ts` — `MystRenderer`, a `switch` in `builtin()` mapping MyST nodes to hast (hastscript), serialized with `allowDangerousHtml` (mystmd supplies KaTeX and citation HTML). User `handlers` first (`undefined` → built-in, `null` → nothing, `ctx.renderDefault` to wrap). Unknown nodes fall back to `div`/`span.myst-<type>`; never throw on new node types. Shiki: highlighter cached per theme pair, only used languages loaded, inline light colours (`defaultColor: 'light'`; base.css switches to dark). Footnotes and bibliography appended per page. Notebook outputs in both the mystmd ≥ 1.7 (`jupyter_data`) and older formats.
+- `assets.ts` — dev middleware (strips `base` if still present, path-traversal guard, falls through to the next handler when missing), `copyAssets`, content types.
+- `schema.ts` — `mystSchema` (`.catchall(z.unknown())` so authors' own keys pass; `date` coerced to `Date`).
+- `urls.ts` — `routeFor` (prefix or function; `index` entry at the prefix), `pageUrl` (base + trailingSlash), `assetUrl`.
+- `components/XrefPreview.astro` — client-side custom element; on hover/focus of `a.myst-xref, a.myst-cite` it fetches the target page and shows the target element as a tooltip.
 
 ## Conventions and gotchas
 
-- **The rendered HTML is a public contract.** Tests assert exact HTML strings (`render.test.ts`, `latex.test.ts`, `doi.test.ts`), `styles/myst.css` and `XrefPreview.astro` depend on the class names and ids, and `docs/content/reference/components-and-styles.md` documents the markup. Changing markup means updating all of them.
-- Integration tests copy a fixture (`test/fixtures/<name>`, each a MyST project with `myst.yml`) to a temp folder with `copyFixture`; tests never build inside the repo. Loader tests use a hand-rolled fake `LoaderContext` in `loader.test.ts`. The DOI test seeds mystmd's `_build/cache` to stay offline.
+- **The rendered HTML is a public contract.** Every class the renderer emits starts with `myst-` (injected CSS must never clash with site or Tailwind classes such as `grid`, `card`); exceptions: `mermaid`, Shiki's `shiki`/`line`/`highlighted`, `task-list-item`, `language-*`, and classes authors set (including MyST's own `button`). Tests assert exact HTML (`render.test.ts`, `latex.test.ts`, `doi.test.ts`), `styles/*.css` and `XrefPreview.astro` depend on the classes, and `docs/content/reference/components-and-styles.md` documents them. Change them together.
+- **CSS**: every selector in `base.css` and `theme.css` is wrapped in `:where()` (zero specificity) so users' CSS, Tailwind utilities and `prose` win; `base.css` holds only what content needs to work, the look goes in `theme.css`. `!important` appears only where Shiki's inline styles must be overridden for dark mode (file-level biome-ignore).
+- **Entry data**: keys MyST knows (`title`, `authors`, `date`, `thumbnail`, …) come normalized from mystmd and override the raw values; any other frontmatter key is kept as written (mystmd drops unknown keys, so the loader reads raw frontmatter itself). Computed values live under `data.myst`, never at the top level, so they cannot collide with authors' keys.
+- Integration tests copy a fixture (`test/fixtures/<name>`) to a temp folder; tests never build inside the repo. `fixtures/collection` (no myst.yml) drives the loader tests through the real integration hook (`setupIntegration` in `test/helpers.ts`) and a fake `LoaderContext`; `basic`, `latex`, `doi` are plain MyST projects for `compile.ts`/renderer tests. The DOI test seeds mystmd's `_build/cache` to stay offline.
 - `src/version.ts` is generated by `scripts/sync-version.mjs` (on `prebuild` and in `npm run version-packages`); do not edit it.
-- `test/readme.test.ts` keeps the README's custom-handler example compiling. The root `README.md` and `packages/astro-myst/README.md` (shown on npm) are separate near-copies; keep them in sync.
+- `test/readme.test.ts` keeps the README's custom-handler example working. The root `README.md` and `packages/astro-myst/README.md` (shown on npm) are separate near-copies; keep them in sync.
 - `katex` is a dependency only for its CSS (`styles/katex.css`); mystmd renders math with its own bundled KaTeX (0.15.6 as of mystmd 1.11). It is pinned to exactly that version and Dependabot ignores it: newer KaTeX renames the classes in mystmd's math HTML, so never upgrade it on its own. `test/katex.test.ts` fails when mystmd bundles a different version.
 - A new mystmd page format: test it, then add the version to `SUPPORTED_PAGE_VERSIONS` in `compile.ts`. A new Astro major: add it to `peerDependencies` and to the `compat` matrix in `.github/workflows/ci.yml`.
 - Changes to the published package need a changeset (`npx changeset`; patch, minor or major). Docs, examples and CI changes do not. Releases are automated (a Changesets "Version Packages" pull request, then npm trusted publishing); see `MAINTAINING.md`.
 - Style is enforced by Biome: 2 spaces, single quotes, trailing commas, semicolons, 120 columns. `noExplicitAny` is off because the MyST AST is loosely typed (`MystNode` has `[key: string]: any`). ESM with `.js` import specifiers (NodeNext).
-- Generated and git-ignored: `_build/`, `public/_myst/`, `public/pagefind/`, `dist/`. mystmd's asset file names (`name-<hash>.ext`) differ between checkouts even for identical content, so never commit them.
+- Generated and git-ignored: `_build/`, `public/_myst/` (old layout), `public/pagefind/`, `dist/`, `node_modules/.astro/` (holds the generated MyST projects). mystmd's asset file names (`name-<hash>.ext`) differ between checkouts even for identical content, so never commit them.
 
 ## CI
 
-`ci.yml` runs Biome, type checks, tests on Ubuntu (Node 22/24/26), macOS and Windows, package checks, a compat job and Playwright e2e, plus zizmor. Keep path handling and process spawning cross-platform (`compile.ts` handles Windows `.cmd` shims). The compat job builds the book example from the packed tarball against Astro 5/6/7 and mystmd 1.3/1.8/latest, so older mystmd output formats must keep working. Actions are pinned to commit SHAs.
+`ci.yml` runs Biome, type checks, tests on Ubuntu (Node 22/24/26), macOS and Windows, package checks, a compat job and Playwright e2e, plus zizmor. Keep path handling and process spawning cross-platform (`compile.ts` handles Windows `.cmd` shims; generated toc paths are POSIX). The compat job builds the book example from the packed tarball against Astro 5/6/7 and mystmd 1.3/1.8/latest, so older Astro and mystmd versions must keep working. Actions are pinned to commit SHAs.
 
-Limitations by design (`docs/content/explanation/limitations.md`): static output only, one MyST project per collection, a full recompile on every change, and `myst.yml` `site.options` theme options are ignored except `numbered_references` and `folders`.
+Limitations by design (`docs/content/explanation/limitations.md`): static output only, one MyST project per collection, a full recompile of a collection on every change, and MyST theme site options do not apply (the Astro layout is the theme).
