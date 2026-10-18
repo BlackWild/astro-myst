@@ -3,17 +3,17 @@ import { getCollection, render } from 'astro:content';
 import BookLayout from '../layouts/BookLayout.astro';
 
 export async function getStaticPaths() {
-  const pages = (await getCollection('book')).sort((a, b) => a.data.order - b.data.order);
+  const pages = (await getCollection('book')).sort((a, b) => a.data.myst.order - b.data.myst.order);
   return pages.map((page, i) => ({
-    // The project index ("" path) is served at the site root.
-    params: { slug: page.data.path || undefined },
+    // The `index` entry is served at the site root.
+    params: { slug: page.id === 'index' ? undefined : page.id },
     props: { page, prev: pages[i - 1], next: pages[i + 1] },
   }));
 }
 
 const { page, prev, next } = Astro.props;
 const { Content, headings } = await render(page);
-const nav = (await getCollection('book')).sort((a, b) => a.data.order - b.data.order);
+const nav = (await getCollection('book')).sort((a, b) => a.data.myst.order - b.data.myst.order);
 ---
 
 <BookLayout page={page} nav={nav} headings={headings} prev={prev} next={next}>

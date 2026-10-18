@@ -1,6 +1,6 @@
 // Keeps the README's custom-handler example type-correct and working.
 import { describe, expect, it } from 'vitest';
-import { type MystNodeHandler, mystLoader, renderMystPage } from '../src/index.js';
+import { type MystNodeHandler, mystLoader, renderMystPage } from '../src/loaders.js';
 
 const admonition: MystNodeHandler = (node, ctx) => {
   if (node.kind !== 'tip') return undefined; // undefined → use the built-in renderer

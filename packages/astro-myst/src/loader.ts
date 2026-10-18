@@ -10,6 +10,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { Loader, LoaderContext } from 'astro/loaders';
 import { ASSETS_DIR, isInside } from './assets.js';
+import { compileMystProject, readMystBuild, resolveCommand } from './compile.js';
 import type { MystProjectOptions } from './integration.js';
 import {
   createProjectConfig,
@@ -21,7 +22,7 @@ import {
   readFrontmatter,
   writeProject,
 } from './project.js';
-import type { MarkdownHeading, MystRenderSettings } from './render.js';
+import { type MarkdownHeading, type MystRenderSettings, renderMystPage } from './render.js';
 import { mystSchema } from './schema.js';
 import { getState } from './state.js';
 import type { MystBuild } from './types.js';
@@ -119,7 +120,7 @@ function publishAssets(publicDir: string, used: Set<string>, dir: string) {
  * export const collections = { blog: defineCollection({ loader: mystLoader({ base: './src/content/blog' }) }) };
  * ```
  */
-export function mystLoader(options: MystLoaderOptions): Loader {
+export function mystLoader(options: MystLoaderOptions) {
   return {
     name: 'astro-myst',
     schema: mystSchema,
@@ -159,7 +160,6 @@ export function mystLoader(options: MystLoaderOptions): Loader {
       let inputs = [baseDir, ...extraInputs];
 
       const compile = async (force: boolean): Promise<MystBuild> => {
-        const { compileMystProject, readMystBuild, resolveCommand } = await import('./compile.js');
         if (!fs.existsSync(baseDir)) throw new Error(`The content folder ${options.base} does not exist.`);
         const sources = await findSources(baseDir, options.pattern ?? DEFAULT_PATTERN);
         const projectConfig = await createProjectConfig({
@@ -193,7 +193,6 @@ export function mystLoader(options: MystLoaderOptions): Loader {
       };
 
       const prepare = async (build: MystBuild) => {
-        const { renderMystPage } = await import('./render.js');
         const mystProject = build.config.projects?.[0];
         if (!mystProject) throw new Error('mystmd produced no project.');
         const indexSlug: string = mystProject.index ?? 'index';
@@ -330,5 +329,5 @@ export function mystLoader(options: MystLoaderOptions): Loader {
         });
       }
     },
-  };
+  } satisfies Loader;
 }

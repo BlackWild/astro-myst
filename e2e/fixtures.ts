@@ -25,3 +25,4 @@ export { expect };
 export const BOOK = 'http://127.0.0.1:4321';
 export const PAPER = 'http://127.0.0.1:4322';
 export const DOCS = 'http://127.0.0.1:4323/astro-myst';
+export const DEV = 'http://127.0.0.1:4324';

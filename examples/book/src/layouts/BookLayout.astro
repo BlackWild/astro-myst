@@ -2,8 +2,6 @@
 import type { CollectionEntry } from 'astro:content';
 import type { MarkdownHeading } from 'astro';
 import XrefPreview from 'astro-myst/XrefPreview.astro';
-import 'astro-myst/katex.css';
-import 'astro-myst/styles.css';
 import '../styles/site.css';
 
 interface Props {
@@ -16,9 +14,9 @@ interface Props {
 
 const { page, nav, headings, prev, next } = Astro.props;
 const { data } = page;
-const projectTitle = data.projectTitle ?? 'MyST';
+const projectTitle = 'Astro + MyST demo';
 const navTitle = (p: CollectionEntry<'book'>) =>
-  `${p.data.enumerator ? `${p.data.enumerator} ` : ''}${p.data.short_title || p.data.title}`;
+  `${p.data.myst.enumerator ? `${p.data.myst.enumerator} ` : ''}${p.data.short_title || p.data.title}`;
 const toc = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
 const current = Astro.url.pathname.replace(/\/$/, '') || '/';
 ---
@@ -44,8 +42,8 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/';
         <ul>
           {
             nav.map((p) => (
-              <li class={`level-${p.data.level}`}>
-                <a href={p.data.url} aria-current={(p.data.url.replace(/\/$/, '') || '/') === current ? 'page' : undefined}>
+              <li class={`level-${p.data.myst.level}`}>
+                <a href={p.data.myst.url} aria-current={(p.data.myst.url.replace(/\/$/, '') || '/') === current ? 'page' : undefined}>
                   {navTitle(p)}
                 </a>
               </li>
@@ -58,7 +56,7 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/';
         <article class="myst">
           <header class="title-block">
             <h1>
-              {data.enumerator && <span class="heading-number">{data.enumerator}</span>} {data.title}
+              {data.myst.enumerator && <span class="myst-heading-number">{data.myst.enumerator}</span>} {data.title}
             </h1>
             {data.subtitle && <p class="subtitle">{data.subtitle}</p>}
             {
@@ -79,8 +77,8 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/';
         </article>
 
         <footer class="pager">
-          {prev ? <a class="prev" href={prev.data.url}><span>Previous</span>{navTitle(prev)}</a> : <span />}
-          {next ? <a class="next" href={next.data.url}><span>Next</span>{navTitle(next)}</a> : <span />}
+          {prev ? <a class="prev" href={prev.data.myst.url}><span>Previous</span>{navTitle(prev)}</a> : <span />}
+          {next ? <a class="next" href={next.data.myst.url}><span>Next</span>{navTitle(next)}</a> : <span />}
         </footer>
       </main>
 
@@ -99,7 +97,7 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/';
             </>
           )
         }
-        <p class="source">Source: <code>{data.source}</code></p>
+        <p class="source">Source: <code>{page.filePath}</code></p>
       </aside>
     </div>
     <XrefPreview />

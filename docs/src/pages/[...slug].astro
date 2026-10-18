@@ -3,8 +3,8 @@ import { getCollection, render } from 'astro:content';
 import DocsLayout from '../layouts/DocsLayout.astro';
 
 export async function getStaticPaths() {
-  const nav = (await getCollection('docs')).sort((a, b) => a.data.order - b.data.order);
-  return nav.map((page) => ({ params: { slug: page.data.path || undefined }, props: { page, nav } }));
+  const nav = (await getCollection('docs')).sort((a, b) => a.data.myst.order - b.data.myst.order);
+  return nav.map((page) => ({ params: { slug: page.id === 'index' ? undefined : page.id }, props: { page, nav } }));
 }
 
 const { page, nav } = Astro.props;

@@ -3,8 +3,8 @@ import { getCollection, render } from 'astro:content';
 import Article from '../layouts/Article.astro';
 
 export async function getStaticPaths() {
-  const pages = (await getCollection('paper')).sort((a, b) => a.data.order - b.data.order);
-  return pages.map((page) => ({ params: { slug: page.data.path || undefined }, props: { page, pages } }));
+  const pages = (await getCollection('paper')).sort((a, b) => a.data.myst.order - b.data.myst.order);
+  return pages.map((page) => ({ params: { slug: page.id === 'index' ? undefined : page.id }, props: { page, pages } }));
 }
 
 const { page, pages } = Astro.props;

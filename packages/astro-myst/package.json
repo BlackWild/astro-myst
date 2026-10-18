@@ -43,6 +43,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./loaders": {
+      "types": "./dist/loaders.d.ts",
+      "default": "./dist/loaders.js"
+    },
     "./base.css": "./styles/base.css",
     "./theme.css": "./styles/theme.css",
     "./katex.css": "./styles/katex.css",

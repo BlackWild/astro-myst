@@ -10,7 +10,7 @@ test.describe('documentation site', () => {
 
   test('cross-references between docs pages resolve', async ({ page }) => {
     await page.goto(`${DOCS}/guides/writing-content`);
-    const xref = page.locator('a.xref[href="/astro-myst#eq-photon"]');
+    const xref = page.locator('a.myst-xref[href="/astro-myst#eq-photon"]');
     await expect(xref).toHaveText('(1)');
     await xref.click();
     await expect(page.locator('#eq-photon')).toBeVisible();
