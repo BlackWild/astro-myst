@@ -138,7 +138,7 @@
   text-align: center;
   scroll-margin-top: 5rem;
 }
-.myst figure.myst-container img {
+.myst figure.myst-container :is(img, video) {
   max-width: 100%;
   height: auto;
   display: inline-block;
@@ -416,11 +416,11 @@
 .myst .myst-unhandled {
   color: var(--myst-danger);
 }
-.myst img.align-left {
+.myst :is(img, video).align-left {
   float: left;
   margin-right: 1rem;
 }
-.myst img.align-right {
+.myst :is(img, video).align-right {
   float: right;
   margin-left: 1rem;
 }
