@@ -125,6 +125,23 @@ describe('renderMystPage', () => {
     expect(html).toContain('<span class="caption-number">Figure 1:</span> Caption');
   });
 
+  it('puts image sizes into style and renders .mp4 files as videos', async () => {
+    const { html } = await render([
+      { type: 'image', url: '/a-1.png', width: '300', height: '40%' },
+      { type: 'image', url: '/b-2.png', height: '12.5' },
+      { type: 'image', url: '/clip-3.mp4', alt: 'A clip', width: '50%', align: 'center' },
+    ]);
+    // `height="40%"` would be read as 40 pixels; MyST's theme uses CSS for both sizes
+    expect(html).toContain(
+      'src="/docs/_myst/a-1.png" alt="" loading="lazy" decoding="async" style="width: 300px; height: 40%">',
+    );
+    expect(html).toContain('style="height: 12.5px"');
+    expect(html).not.toContain(' height=');
+    expect(html).toContain(
+      '<video src="/docs/_myst/clip-3.mp4" aria-label="A clip" class="align-center" style="width: 50%" autoplay muted loop playsinline></video>',
+    );
+  });
+
   it('renders tables with header rows in <thead>', async () => {
     const cell = (v: string, header = false): MystNode => ({ type: 'tableCell', header, children: [t(v)] });
     const { html } = await render([
@@ -175,6 +192,17 @@ describe('renderMystPage', () => {
     );
     expect(html).toMatch(/<li id="fn-n" value="1"><p>Note\. <a class="footnote-backref" href="#fnref-n"/);
     expect(html).toContain('<li id="cite-k84">Knuth, D. (1984). <i>The TeXbook</i>.</li>');
+  });
+
+  it('keeps ids unique when a footnote is referenced more than once', async () => {
+    const ref = { type: 'footnoteReference', identifier: 'n', enumerator: '1' };
+    const { html } = await render([
+      { type: 'paragraph', children: [ref, t(' and '), ref, t(' and '), ref] },
+      { type: 'footnoteDefinition', identifier: 'n', enumerator: '1', children: [t('Note.')] },
+    ]);
+    expect(html.match(/id="fnref-n[^"]*"/g)).toEqual(['id="fnref-n"', 'id="fnref-n-2"', 'id="fnref-n-3"']);
+    expect(html.match(/href="#fn-n"/g)).toHaveLength(3);
+    expect(html).toContain('<a class="footnote-backref" href="#fnref-n"');
   });
 
   it('rewrites internal page links and static asset links only', async () => {

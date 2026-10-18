@@ -128,6 +128,7 @@ class MystRenderer {
   readonly headings: MarkdownHeading[] = [];
   readonly ctx: MystRenderContext;
   private footnotes = new Map<string, { enumerator: string; node: MystNode }>();
+  private footnoteRefs = new Map<string, number>();
   private tabSets = 0;
   private highlighter?: Highlighter;
   private langs = new Set<string>();
@@ -417,9 +418,13 @@ class MystRenderer {
       case 'footnoteReference': {
         const key: string = n.identifier ?? n.label;
         const num = String(n.enumerator ?? key);
+        // A footnote can be referenced several times; ids must stay unique (the back-link targets the first).
+        const count = (this.footnoteRefs.get(key) ?? 0) + 1;
+        this.footnoteRefs.set(key, count);
+        const refId = count === 1 ? `fnref-${key}` : `fnref-${key}-${count}`;
         return [
           this.el('sup', { class: 'footnote-ref' }, [
-            this.el('a', { href: `#fn-${key}`, id: `fnref-${key}`, ariaLabel: `Footnote ${num}` }, num),
+            this.el('a', { href: `#fn-${key}`, id: refId, ariaLabel: `Footnote ${num}` }, num),
           ]),
         ];
       }
@@ -474,8 +479,27 @@ class MystRenderer {
       case 'legend':
         return [this.el('div', { class: 'legend' }, kids())];
       case 'image': {
-        const w = n.width ? String(n.width) : undefined;
-        const width = w ? (/^\d+(\.\d+)?$/.test(w) ? `${w}px` : w) : undefined;
+        // As in MyST's own theme: sizes go into `style` (a bare number means pixels), and
+        // .mp4 files are videos that play like animated GIFs.
+        const size = (prop: string, v: unknown) =>
+          v ? [`${prop}: ${String(v).replace(/^\d+(\.\d+)?$/, '$&px')}`] : [];
+        const style = [...size('width', n.width), ...size('height', n.height)].join('; ') || undefined;
+        const className = cls(n.align && `align-${n.align}`, n.class);
+        if (/\.mp4$/i.test(String(n.url ?? ''))) {
+          return [
+            this.el('video', {
+              src: this.opts.resolveAssetUrl(n.url),
+              title: n.title,
+              ariaLabel: n.alt || undefined,
+              class: className,
+              style,
+              autoPlay: true,
+              muted: true,
+              loop: true,
+              playsInline: true,
+            }),
+          ];
+        }
         return [
           this.el('img', {
             src: this.opts.resolveAssetUrl(n.urlOptimized ?? n.url),
@@ -483,9 +507,8 @@ class MystRenderer {
             title: n.title,
             loading: 'lazy',
             decoding: 'async',
-            class: cls(n.align && `align-${n.align}`, n.class),
-            style: width ? `width: ${width}` : undefined,
-            height: n.height,
+            class: className,
+            style,
           }),
         ];
       }

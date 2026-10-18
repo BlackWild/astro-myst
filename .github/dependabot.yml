@@ -17,11 +17,12 @@ updates:
       tooling:
         patterns: ['@biomejs/*', '@changesets/*', 'typescript', 'vitest', '@vitest/*', '@playwright/test', 'publint', '@arethetypeswrong/*', 'pagefind', '@types/*']
       runtime:
-        patterns: ['hast-util-to-html', 'hastscript', 'shiki', 'katex', 'yaml']
+        patterns: ['hast-util-to-html', 'hastscript', 'shiki', 'yaml']
     ignore:
-      # katex must match the KaTeX version mystmd renders with (0.15.x); see packages/astro-myst/styles/katex.css
+      # katex is pinned to the KaTeX version mystmd bundles (its CSS must match mystmd's math HTML),
+      # so no version or security updates. packages/astro-myst/test/katex.test.ts fails on the
+      # mystmd update that changes that version and names the katex version to pin.
       - dependency-name: katex
-        update-types: ['version-update:semver-major', 'version-update:semver-minor']
       # @astrojs/check supports TypeScript 5 and 6 only; move to 7 once it does
       - dependency-name: typescript
         update-types: ['version-update:semver-major']
