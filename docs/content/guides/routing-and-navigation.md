@@ -1,7 +1,7 @@
 ---
 title: Routing and navigation
 label: guide-routing
-description: Entry ids, where pages are served, and sidebars, prev/next links and on-page tables of contents built from entry data.
+description: Entry ids, where pages are served, and sidebars, breadcrumbs, prev/next links and on-page tables of contents built from entry data.
 ---
 
 astro-myst stores one entry per file. You decide where the pages are served and what the navigation looks like; the entries carry what you need for both.
@@ -84,44 +84,94 @@ Every entry carries `data.myst`, computed by the loader:
 | `level` | Nesting level in the table of contents (`1` = top level) |
 | `enumerator` | Page number such as `"2.1"`, when MyST's `numbering.title` is enabled |
 | `kind` | `"Article"`, or `"Notebook"` for Jupyter notebooks |
+| `parents` | The toc groups and parent pages containing the page, outermost first: `{ title }` for a group, `{ title, id }` for a page |
+
+`astro-myst` exports two helpers that build navigation from these fields. They work on the entries of any MyST collection, including a filtered list.
 
 ### Sidebar
 
-Sort the collection by `order` and indent by `level`. In the page above, where `note` is the current entry:
+`mystNavigation(entries)` returns the table of contents as a tree, in toc order: pages nested under their parent pages, and pages of a toc group under an item with the group's title. Each item has a `title` (the page's `short_title`, else its `title`, or the group's title), the `entry` and its `url` (both missing for groups), its `level` and its `children`. In the page above, where `note` is the current entry:
 
 ```astro
 ---
-const nav = (await getCollection('notes')).sort((a, b) => a.data.myst.order - b.data.myst.order);
+// src/components/TocList.astro: renders itself for nested items
+import type { MystNavItem } from 'astro-myst';
+
+interface Props {
+  items: MystNavItem[];
+  current: string;
+}
+const { items, current } = Astro.props;
 ---
 
-<nav>
-  <ul>
-    {nav.map((p) => (
-      <li style={`padding-left: ${p.data.myst.level - 1}rem`}>
-        <a href={p.data.myst.url} aria-current={p.id === note.id ? 'page' : undefined}>
-          {p.data.myst.enumerator} {p.data.short_title ?? p.data.title}
-        </a>
-      </li>
-    ))}
-  </ul>
+<ul>
+  {items.map((item) => (
+    <li>
+      {item.url ? (
+        <a href={item.url} aria-current={item.entry?.id === current ? 'page' : undefined}>{item.title}</a>
+      ) : (
+        <span class="group">{item.title}</span>
+      )}
+      {item.children.length > 0 && <Astro.self items={item.children} current={current} />}
+    </li>
+  ))}
+</ul>
+```
+
+```astro
+---
+// in the layout
+import { mystNavigation } from 'astro-myst';
+import TocList from '../components/TocList.astro';
+
+const tree = mystNavigation(await getCollection('notes'));
+---
+
+<nav><TocList items={tree} current={note.id} /></nav>
+```
+
+If you filter entries out (drafts, for example), their child pages stay in the tree, under an item with the parent's title and no link. `short_title` is MyST's frontmatter field for compact navigation labels; add `item.entry?.data.myst.enumerator` for chapter numbers.
+
+For a flat list, sort the collection by `order` and indent by `level` instead:
+
+```astro
+{nav.map((p) => <li style={`padding-left: ${p.data.myst.level - 1}rem`}><a href={p.data.myst.url}>{p.data.title}</a></li>)}
+```
+
+### Breadcrumbs
+
+`data.myst.parents` lists the groups and pages above the current one:
+
+```astro
+---
+const notes = await getCollection('notes');
+const urlOf = (id: string) => notes.find((n) => n.id === id)?.data.myst.url;
+---
+
+<nav aria-label="Breadcrumbs">
+  {note.data.myst.parents.map((parent) =>
+    parent.id ? <a href={urlOf(parent.id)}>{parent.title}</a> : <span>{parent.title}</span>,
+  )}
 </nav>
 ```
 
-`short_title` is MyST's frontmatter field for compact navigation labels.
-
 ### Previous and next
 
-Pass the neighbours from `getStaticPaths()`:
+`mystPrevNext(entries, current)` returns the pages before and after the current entry (or entry id) in toc order:
 
 ```ts
+import { mystPrevNext } from 'astro-myst';
+
 export async function getStaticPaths() {
-  const notes = (await getCollection('notes')).sort((a, b) => a.data.myst.order - b.data.myst.order);
-  return notes.map((note, i) => ({
+  const notes = await getCollection('notes');
+  return notes.map((note) => ({
     params: { slug: note.id === 'index' ? undefined : note.id },
-    props: { note, prev: notes[i - 1], next: notes[i + 1] },
+    props: { note, ...mystPrevNext(notes, note) },
   }));
 }
 ```
+
+`prev` is missing on the first page and `next` on the last one.
 
 (guide-routing-toc)=
 ## Order and nesting
@@ -142,13 +192,11 @@ mystLoader({
 
 - The first entry is the root page of the collection, usually `index.md`. MyST does not allow it to have children.
 - `children` nest pages: `oscillator.md` gets level 2.
-- An entry with a `title` and `children` but no `file` groups pages. The group is not an entry itself; its children get level 2.
+- An entry with a `title` and `children` but no `file` groups pages. The group is not an entry itself; its children get level 2 and the group in `data.myst.parents`, and `mystNavigation()` shows it as an item without a link.
 - A `pattern` entry expands to the matching files in alphabetical order.
 - Files that the loader's `pattern` matches but the `toc` does not list follow at the end, at level 1.
 
 With `numbering.title: true` in the MyST project options, pages are numbered in this order, and `data.myst.enumerator` holds the number. See [](#sec-numbering).
-
-Group titles are not entries, so they do not appear in `data`. To show them in a sidebar, keep them in your layout, or group the pages by the first segment of their id, as this site does.
 
 ## On this page
 

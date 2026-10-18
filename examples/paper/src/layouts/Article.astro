@@ -35,6 +35,21 @@ const { data } = page;
         <h1>{data.title}</h1>
         {data.authors.length > 0 && <p class="authors">{data.authors.map((a) => a.name).join(', ')}</p>}
         <p class="source">Source: <code>{page.filePath}</code></p>
+        {
+          data.myst.exports && (
+            <p class="downloads">
+              Download:{' '}
+              {data.myst.exports.map((file, i) => (
+                <>
+                  {i > 0 && ' · '}
+                  <a href={file.url} download={file.filename}>
+                    {file.title}
+                  </a>
+                </>
+              ))}
+            </p>
+          )
+        }
       </header>
       <slot />
     </article>

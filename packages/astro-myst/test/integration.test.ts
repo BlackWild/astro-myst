@@ -32,13 +32,23 @@ function request(integration: ReturnType<typeof myst>, url: string, method = 'GE
 }
 
 describe('integration', () => {
-  it('adds KaTeX and base styles to every page by default', () => {
+  it('adds KaTeX and base styles, and the tab sync script, to every page by default', () => {
     expect(setupIntegration().scripts).toEqual([
       ['page-ssr', "import 'astro-myst/katex.css';\nimport 'astro-myst/base.css';"],
+      ['page', "import 'astro-myst/client/sync-tabs';"],
     ]);
     expect(setupIntegration({ styles: 'theme' }).scripts[0][1]).toContain("import 'astro-myst/theme.css';");
-    expect(setupIntegration({ styles: false }).scripts).toEqual([]);
+    expect(setupIntegration({ styles: false, scripts: false }).scripts).toEqual([]);
     expect(() => myst({ styles: 'fancy' as any })).toThrow(/Unknown `styles` option "fancy"/);
+  });
+
+  it('adds the optional browser scripts that are enabled', () => {
+    const { scripts } = setupIntegration({
+      styles: false,
+      scripts: { syncTabs: false, copyCode: true, mermaid: true },
+    });
+    expect(scripts).toEqual([['page', "import 'astro-myst/client/copy-code';\nimport 'astro-myst/client/mermaid';"]]);
+    expect(setupIntegration({ styles: false, scripts: { syncTabs: false } }).scripts).toEqual([]);
   });
 
   it('shares its options with the loaders', () => {

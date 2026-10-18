@@ -158,6 +158,138 @@ describe('mystLoader', () => {
     expect(html).toContain('[<a class="myst-cite" href="#cite-knuth1984" data-cite="knuth1984">1</a>]');
   });
 
+  it('exposes toc groups, frontmatter parts and downloads, and places the bibliography', async () => {
+    setupIntegration();
+    const { root, content } = site();
+    fs.writeFileSync(
+      path.join(content, 'paper.md'),
+      [
+        '---',
+        'title: Paper',
+        'abstract: A *short* abstract.',
+        'acknowledgments: Thanks.',
+        'downloads:',
+        '  - file: img/unused.svg',
+        '    title: Figure',
+        '  - url: https://example.org/data.zip',
+        '    title: Data',
+        '---',
+        '',
+        'Water is {chem}`H2O`; see {cite}`knuth1984`.',
+        '',
+        '```{bibliography}',
+        '```',
+        '',
+        'After the references.',
+        '',
+      ].join('\n'),
+    );
+    const { ctx, entries } = fakeContext(root);
+    await mystLoader({
+      base: './src/content/notes',
+      toc: [
+        { file: 'index.md' },
+        { title: 'Part I', children: [{ file: 'chapter.md', children: [{ file: 'paper.md' }] }] },
+      ],
+    }).load(ctx);
+    expect(entries.get('index').data.myst.parents).toEqual([]);
+    expect(entries.get('chapter').data.myst.parents).toEqual([{ title: 'Part I' }]);
+    expect(entries.get('paper').data.myst.parents).toEqual([{ title: 'Part I' }, { title: 'Chapter', id: 'chapter' }]);
+    expect(entries.get('notes/hello-world').data.myst.parents).toEqual([]); // not in the toc: appended at the top level
+
+    const paper = entries.get('paper');
+    const html: string = paper.rendered.html;
+    // Frontmatter parts: the abstract before the content, others after it.
+    expect(html.startsWith('<section class="myst-part myst-part-abstract" data-part="abstract">')).toBe(true);
+    expect(html).toContain('<h2 class="myst-part-title">Abstract</h2><p>A <em>short</em> abstract.</p>');
+    expect(html.indexOf('myst-part-acknowledgments')).toBeGreaterThan(html.indexOf('After the references.'));
+    expect(paper.data.myst.parts).toEqual({
+      abstract: expect.stringContaining('A <em>short</em> abstract.'),
+      acknowledgments: expect.stringContaining('Thanks.'),
+    });
+    // {bibliography} places the references once, where it stands.
+    expect(html.match(/class="myst-bibliography"/g)).toHaveLength(1);
+    expect(html.indexOf('class="myst-bibliography"')).toBeLessThan(html.indexOf('After the references.'));
+    expect(html).toContain('<span class="myst-chem">H<sub>2</sub>O</span>');
+    // Downloads: files are published with the other assets.
+    expect(paper.data.myst.downloads).toEqual([
+      {
+        title: 'Figure',
+        url: expect.stringMatching(/^\/_myst\/notes\/unused-[0-9a-f]+\.svg$/),
+        filename: 'unused.svg',
+      },
+      { title: 'Data', url: 'https://example.org/data.zip' },
+    ]);
+    const published = fs.readdirSync(getState()!.assets.get('notes')!).map((f) => f.replace(/-[0-9a-f]+/, ''));
+    expect(published.sort()).toEqual(['dot.svg', 'unused.svg']);
+  });
+
+  it('exports pages with mystmd and publishes the files with the assets', async () => {
+    setupIntegration({ exports: ['docx'] }); // the loader's option wins
+    const { root, content } = site();
+    const { ctx, entries } = fakeContext(root);
+    await mystLoader({ base: './src/content/notes', exports: { pages: ['md', 'jats'] } }).load(ctx);
+    expect(entries.get('chapter').data.myst.exports).toEqual([
+      {
+        title: 'Markdown',
+        url: '/_myst/notes/exports/md/chapter.md',
+        filename: 'chapter.md',
+        format: 'md',
+        scope: 'page',
+      },
+      {
+        title: 'JATS XML',
+        url: '/_myst/notes/exports/jats/chapter.xml',
+        filename: 'chapter.xml',
+        format: 'jats',
+        scope: 'page',
+      },
+    ]);
+    expect(entries.get('notes/hello-world').data.myst.exports[0]).toMatchObject({
+      url: '/_myst/notes/exports/md/notes/hello-world.md',
+      filename: 'Hello World.md',
+    });
+    const assets = getState()!.assets.get('notes')!;
+    expect(fs.readFileSync(path.join(assets, 'exports', 'md', 'chapter.md'), 'utf8')).toContain('e^{i\\pi} + 1 = 0');
+    expect(fs.readFileSync(path.join(assets, 'exports', 'jats', 'chapter.xml'), 'utf8')).toContain('<article');
+    // Nothing is written next to the content.
+    expect(fs.readdirSync(content).sort()).toEqual([
+      '_snippet.md',
+      'chapter.md',
+      'img',
+      'index.md',
+      'notes',
+      'refs.bib',
+    ]);
+
+    // `astro dev` (a watcher) exports only with `dev: true`.
+    const watcher = { add() {}, on() {} };
+    const dev = fakeContext(root, {}, watcher);
+    await mystLoader({ base: './src/content/notes', exports: ['md'] }).load(dev.ctx);
+    expect(dev.entries.get('chapter').data.myst.exports).toBeUndefined();
+  });
+
+  it('refuses frontmatter exports that would write next to the content, and unknown formats', async () => {
+    setupIntegration();
+    const { root, content } = site();
+    fs.writeFileSync(
+      path.join(content, 'paper.md'),
+      '---\nexports:\n  - format: md\n    output: out/paper.md\n---\nText\n',
+    );
+    await expect(
+      mystLoader({ base: './src/content/notes', exports: ['md'] }).load(fakeContext(root).ctx),
+    ).rejects.toThrow(
+      /paper\.md: the export "out\/paper\.md" in the frontmatter would be written next to your content/,
+    );
+    expect(fs.existsSync(path.join(content, 'out'))).toBe(false);
+    await expect(
+      mystLoader({ base: './src/content/notes', exports: ['pdf', 'html' as any] }).load(fakeContext(root).ctx),
+    ).rejects.toThrow(/Unknown export format "html"/);
+    await expect(
+      mystLoader({ base: './src/content/notes', exports: { collection: ['md' as any] } }).load(fakeContext(root).ctx),
+    ).rejects.toThrow(/Export format "md" cannot combine pages/);
+  });
+
   it('reports duplicate ids, missing folders and a missing integration', async () => {
     setupIntegration();
     const { root, content } = site();

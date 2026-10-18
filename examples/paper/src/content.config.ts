@@ -10,6 +10,9 @@ export const collections = {
       route: '/',
       toc: [{ file: 'index.tex' }, { file: 'supplement.md' }],
       project: { numbering: { headings: true } },
+      // A JATS XML download of each page, made by mystmd during `astro build`. Add 'pdf' with a
+      // TeX distribution installed, or 'docx' (mystmd downloads its template).
+      exports: ['jats'],
     }),
   }),
 };

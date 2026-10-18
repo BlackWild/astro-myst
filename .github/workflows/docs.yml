@@ -25,6 +25,9 @@ env:
 jobs:
   build:
     name: Build
+    # The "Version Packages" pull request only bumps versions; the docs (and their changelog page)
+    # are rebuilt and deployed when it merges.
+    if: ${{ github.head_ref != 'changeset-release/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

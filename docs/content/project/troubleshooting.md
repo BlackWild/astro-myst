@@ -46,5 +46,14 @@ DOI citations fail in CI
 Changes are not picked up, or the output is stale
 : Force a fresh compile with the `--force` flag of `astro dev`, `astro build` or `astro sync` (it clears Astro's content layer cache), by deleting `node_modules/.astro/astro-myst`, or with `cache: false` on the loader. If pages include files from outside `base`, list them in `extraInputs` so that changes to them are noticed. After upgrading mystmd outside npm (a `myst` from pip or conda, or any `command`), force one fresh compile: the cache knows only the executable's name, not its version.
 
+A diagram shows its source text
+: `{mermaid}` diagrams are drawn in the browser by the integration's `mermaid` script. Turn it on with `myst({ scripts: { mermaid: true } })` and install the `mermaid` package ([](#ref-options-scripts)).
+
+`… the export "…" in the frontmatter would be written next to your content`
+: A page declares `exports` in its frontmatter with an `output`, in a format that astro-myst exports. mystmd would write that file relative to the page, into your content folder. Remove the `output`: astro-myst publishes exports itself ([](#guide-exports)).
+
+`mystmd did not export … as …`
+: mystmd could not make an export; its own messages above say why. The usual causes: a PDF needs `latexmk` from a TeX distribution (`pdf`) or the `typst` CLI (`typst`) on the build machine; templates for `pdf`, `tex`, `typst` and `docx` are downloaded from api.mystmd.org, which needs network access (a blocked download shows as `403 Forbidden` or a failed template link). `astro build` fails; `astro dev` (with `dev: true`) logs a warning and leaves the download out. See [](#guide-exports).
+
 Still stuck?
 : [Open an issue](https://github.com/BlackWild/astro-myst/issues/new/choose) with the versions of Astro, mystmd and astro-myst and the warning from the log.

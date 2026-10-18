@@ -7,8 +7,12 @@ export const test = base.extend<{ pageProblems: string[] }>({
       const problems: string[] = [];
       page.on('pageerror', (err) => problems.push(`page error: ${err.message}`));
       page.on('console', (msg) => {
-        // HTTP failures are reported with their URL below.
-        if (msg.type() === 'error' && !msg.text().startsWith('Failed to load resource')) problems.push(msg.text());
+        // HTTP failures are reported with their URL below. Astro's dev toolbar logs failures of its
+        // own audits (e.g. a request cut off by a reload), which say nothing about the page.
+        const text = msg.text();
+        if (msg.type() !== 'error' || text.startsWith('Failed to load resource')) return;
+        if (text.startsWith('%cAstro') && text.includes("Error while running audit's")) return;
+        problems.push(text);
       });
       page.on('response', (res) => {
         if (res.status() >= 400 && !res.url().endsWith('/favicon.ico')) problems.push(`${res.status()} ${res.url()}`);

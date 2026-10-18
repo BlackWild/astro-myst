@@ -54,8 +54,39 @@ Computed by the loader:
 | `myst.level` | `number` | Nesting level in the table of contents (`1` = top level) |
 | `myst.enumerator` | `string?` | Page number such as `"2.1"`, when `numbering.title` is enabled |
 | `myst.kind` | `string` | `"Article"`, or `"Notebook"` for Jupyter notebooks |
+| `myst.parents` | `{ title, id? }[]` | The toc groups and parent pages that contain the page, outermost first: `{ title }` for a group (a toc entry with a `title` but no `file`), `{ title, id }` for a parent page. `[]` at the top level. |
+| `myst.parts` | `Record<string, string>?` | HTML of each [part](#guide-writing-parts) given in the frontmatter, such as `abstract` or `acknowledgments`, keyed by part name |
+| `myst.downloads` | `Download[]?` | The files listed in the frontmatter `downloads`, as `{ title, url, filename?, format? }`, with `url` where the site serves the file |
+| `myst.exports` | `Export[]?` | Files exported with the [`exports` option](#guide-exports): `{ title, url, filename, format, scope }`, this page's files (`scope: 'page'`) and then the whole collection's (`scope: 'collection'`) |
 
-See [](#guide-routing) for sidebars and prev/next links built from these fields.
+See [](#guide-routing) for sidebars, breadcrumbs and prev/next links built from these fields, and [](#guide-exports) for download links.
+
+(ref-entry-data-parts)=
+### Frontmatter parts
+
+Parts written in the frontmatter, such as `abstract: …`, are part of the page's HTML too, as in MyST's themes: `abstract`, `summary` and `keypoints` come before the content, the other parts (`acknowledgments`, `data_availability`, …) after it, before the footnotes and the bibliography. Each one is a `section.myst-part` with a heading, like parts written in the body. `myst.parts` holds the same HTML, for example to show the abstract in a list of posts:
+
+```astro
+{post.data.myst.parts?.abstract && <Fragment set:html={post.data.myst.parts.abstract} />}
+```
+
+### Downloads
+
+mystmd resolves the frontmatter `downloads`: files are copied with the page's images, and exports referenced by their `id` become files. The raw value stays in `data.downloads` as you wrote it; use `myst.downloads` for links:
+
+```yaml
+downloads:
+  - file: data/results.csv
+    title: Results
+  - url: https://doi.org/10.5281/zenodo.1234
+    title: Dataset on Zenodo
+```
+
+```astro
+<ul>
+  {post.data.myst.downloads?.map((file) => <li><a href={file.url} download={file.filename}>{file.title}</a></li>)}
+</ul>
+```
 
 ## `render(entry)`
 
@@ -65,7 +96,7 @@ import { render } from 'astro:content';
 const { Content, headings, remarkPluginFrontmatter } = await render(entry);
 ```
 
-- `Content` renders the page body. The title is not part of it, so place it in your layout. Footnotes and the bibliography are appended to the body.
+- `Content` renders the page body. The title is not part of it, so place it in your layout. [Frontmatter parts](#ref-entry-data-parts) are included; footnotes and the bibliography are appended to the body, unless a `{bibliography}` directive places the references.
 - `headings` lists the headings as `{ depth, slug, text }`. `slug` is the heading's element id, and `text` includes the section number when heading numbering is enabled, for example `1.2 Methods`.
 - `remarkPluginFrontmatter` is the page's complete frontmatter as normalized by MyST (numbering, math macros, license, exports, …), including the keys inherited from the project options. Keys that MyST does not know are not in it.
 

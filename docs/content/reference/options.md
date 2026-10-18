@@ -52,6 +52,8 @@ export const collections = {
 |---|---|---|---|
 | `project` | `object` | `{}` | MyST project options shared by every collection. See [below](#ref-options-project). |
 | `styles` | `'base'`, `'theme'` or `false` | `'base'` | Stylesheets added to every page. See [below](#ref-options-styles). |
+| `scripts` | `{ syncTabs?, copyCode?, mermaid? }` or `false` | `{ syncTabs: true }` | Small browser scripts added to every page. See [below](#ref-options-scripts). |
+| `exports` | `MystExports` | none | Files to export every page in, such as `['pdf', 'docx']`, offered as downloads. Each loader can override it. See [](#guide-exports). |
 | `command` | `string` | the `mystmd` package | Executable to run instead of the `mystmd` npm package, for example `'myst'` installed with pip or conda, or `'jupyter-book'`. It must support `build --site`. |
 | `args` | `string[]` | `[]` | Extra flags for `myst build --site`, for every collection. Useful values: `['--execute']` to run notebooks, `['--strict']` to fail on mystmd errors. |
 | `codeThemes`, `handlers`, `numberedCitations`, `labels` | | | [Render settings](#ref-options-render) for every collection. |
@@ -91,6 +93,23 @@ myst({
 
 Any other value is an error. See [](#guide-styling) and [](#ref-components).
 
+(ref-options-scripts)=
+### `scripts`
+
+Small scripts the integration adds to every page. Each one acts only on MyST content in the page and does nothing elsewhere. `scripts: false` adds none; an object turns single scripts on or off, and keys you leave out keep their default.
+
+| Key | Default | What it does |
+|---|---|---|
+| `syncTabs` | `true` | Tabs with the same `:sync:` key switch together, across all tab sets of the page. |
+| `copyCode` | `false` | Adds a copy button to every code block. The button exists only when the script runs, so pages without JavaScript show no dead buttons. |
+| `mermaid` | `false` | Draws `{mermaid}` diagrams with [Mermaid.js](https://mermaid.js.org), in dark mode too. Install the `mermaid` package (`npm install mermaid`); it is loaded only on pages that contain a diagram. |
+
+```ts
+myst({ scripts: { copyCode: true, mermaid: true } });
+```
+
+The scripts also run after Astro view transitions. They are the modules `astro-myst/client/sync-tabs`, `astro-myst/client/copy-code` and `astro-myst/client/mermaid`; to load one only on some pages, turn it off here and import it in a `<script>` there (see [](#ref-api-client)).
+
 (ref-options-loader)=
 ## Loader options
 
@@ -104,6 +123,7 @@ Any other value is an error. See [](#guide-styling) and [](#ref-components).
 | `route` | `string` or `(id) => string` | `'/<collection name>'` | Where you serve the pages, so that links between them work. See [](#guide-routing-route). |
 | `project` | `object` | `{}` | [MyST project options](#ref-options-project) for this collection, merged over the integration's `project`. |
 | `args` | `string[]` | `[]` | Extra flags for `myst build --site`, appended to the integration's `args`. |
+| `exports` | `MystExports` | the integration's | Files to export the collection's pages in, offered as downloads in `data.myst.exports`. Its keys replace the integration's. See [](#guide-exports). |
 | `extraInputs` | `string[]` | `[]` | Files or folders outside `base` that pages read, for example a README included with `{include}`. Relative to the Astro root. They are watched in `astro dev` and part of the cache key. |
 | `generateId` | `({ entry, base, data }) => string` | ids like `glob()` | Custom entry ids, as for `glob()`: `entry` is the file path relative to `base`, `base` the folder as a `URL`, `data` the file's frontmatter. |
 | `cache` | `boolean` | `true` | Reuse the previous mystmd build while no input changed. Rendering always runs. |

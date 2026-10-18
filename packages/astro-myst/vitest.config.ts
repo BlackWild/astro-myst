@@ -9,6 +9,8 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
+      // Browser scripts, tested end to end with Playwright (e2e/docs.spec.ts).
+      exclude: ['src/client/**'],
       reporter: ['text', 'html', 'lcov', 'json-summary'],
       thresholds: { statements: 80, branches: 65, functions: 80, lines: 80 },
     },

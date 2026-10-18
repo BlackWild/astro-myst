@@ -6,18 +6,20 @@ description: The exports of astro-myst and astro-myst/loaders, including the low
 
 astro-myst has two JavaScript entry points, like Starlight's `@astrojs/starlight` and `@astrojs/starlight/loaders`:
 
-- `astro-myst`: the integration, for `astro.config`. It is kept light.
+- `astro-myst`: the integration, for `astro.config`, and the navigation helpers, for your pages. It is kept light.
 - `astro-myst/loaders`: the loader and everything else, for `src/content.config.ts` and your own code.
 
-The stylesheets (`astro-myst/base.css`, `astro-myst/theme.css`, `astro-myst/katex.css`) and the `astro-myst/XrefPreview.astro` component are described in [](#ref-components).
+The stylesheets (`astro-myst/base.css`, `astro-myst/theme.css`, `astro-myst/katex.css`) and the `astro-myst/XrefPreview.astro` component are described in [](#ref-components); the browser scripts in `astro-myst/client/*` [below](#ref-api-client).
 
 ## `astro-myst`
 
 | Export | Description |
 |---|---|
 | `myst(options?: MystOptions): AstroIntegration` | The integration (default export). See [](#ref-options-integration). |
+| `mystNavigation(entries)` | The table of contents of a collection as a tree of `MystNavItem`s. See [below](#ref-api-navigation). |
+| `mystPrevNext(entries, current)` | The pages before and after `current` in toc order. See [below](#ref-api-navigation). |
 | `VERSION: string` | The installed version of astro-myst |
-| Types | `MystOptions`, `MystProjectOptions`, `MystLoaderOptions`, `MystTocEntry`, `MystRoute`, `MystEntryData`, `MystRenderSettings`, `MystNodeHandler`, `MystRenderContext`, `MarkdownHeading`, `MystNode`, `HastChild`, `RawNode` |
+| Types | `MystOptions`, `MystProjectOptions`, `MystLoaderOptions`, `MystTocEntry`, `MystRoute`, `MystEntryData`, `MystRenderSettings`, `MystNodeHandler`, `MystRenderContext`, `MarkdownHeading`, `MystNode`, `HastChild`, `RawNode`, `MystNavEntry`, `MystNavItem`, `MystExports`, `MystExportsOptions`, `MystExportFormat`, `MystCollectionExportFormat` |
 
 ```ts
 // astro.config.ts
@@ -87,13 +89,68 @@ myst({
 
 `MystNode` is a node of the MyST AST: `{ type, children?, value?, … }`. See [](#guide-custom-renderers) for a walkthrough.
 
+(ref-api-navigation)=
+## Navigation helpers
+
+```ts
+function mystNavigation<E extends MystNavEntry>(entries: readonly E[]): MystNavItem<E>[];
+function mystPrevNext<E extends MystNavEntry>(entries: readonly E[], current: E | string): { prev?: E; next?: E };
+
+interface MystNavItem<E> {
+  title: string; // the page's short_title or title, or the group's title
+  entry?: E; // undefined for groups
+  url?: string; // undefined for groups
+  level: number; // 1 for the top level
+  children: MystNavItem<E>[];
+}
+```
+
+Both take the entries of a MyST collection, as returned by `getCollection()`, in any order and possibly filtered: they sort by `data.myst.order`. `mystNavigation()` nests pages under their parent pages and toc groups using `data.myst.parents`; a parent page that is not in `entries` becomes an item without `entry` and `url`, holding its children. `MystNavEntry` describes the fields they read, which every MyST entry has. See [](#guide-routing) for examples.
+
+(ref-api-exports)=
+## Export options
+
+The `exports` option of the integration and the loader has the type `MystExports`:
+
+```ts
+type MystExportFormat = 'pdf' | 'typst' | 'tex' | 'docx' | 'md' | 'jats';
+type MystCollectionExportFormat = 'pdf' | 'typst' | 'tex';
+type MystExports = MystExportFormat[] | MystExportsOptions;
+
+interface MystExportsOptions {
+  pages?: MystExportFormat[]; // one file per page
+  collection?: MystCollectionExportFormat[]; // one file of all pages, in toc order
+  templates?: Partial<Record<MystExportFormat, string>>; // template name, URL or folder
+  dev?: boolean; // also export in astro dev
+}
+```
+
+An array is short for `{ pages: [...] }`. See [](#guide-exports).
+
+(ref-api-client)=
+## Browser scripts: `astro-myst/client/*`
+
+| Module | What it does |
+|---|---|
+| `astro-myst/client/sync-tabs` | Switches tabs with the same `:sync:` key together |
+| `astro-myst/client/copy-code` | Adds a copy button to code blocks |
+| `astro-myst/client/mermaid` | Draws `{mermaid}` diagrams with the `mermaid` package, loaded only when a page has one |
+
+The integration's [`scripts` option](#ref-options-scripts) normally adds them to every page. The modules have no exports: importing one runs it, and it runs again after view transitions. To load one only where you need it, turn it off in `scripts` and import it in a `<script>` of that page or layout:
+
+```astro
+<script>
+  import 'astro-myst/client/mermaid';
+</script>
+```
+
 ## `renderMystPage(page, options)`
 
 ```ts
 function renderMystPage(page: MystPageJson, options: RenderOptions): Promise<RenderResult>;
 ```
 
-Renders one page, as written by `myst build --site`, and returns `{ html, headings }`. The loader uses it for every entry; call it yourself for a custom loader, a script or a test.
+Renders one page, as written by `myst build --site`, and returns `{ html, headings, parts }`. The loader uses it for every entry; call it yourself for a custom loader, a script or a test.
 
 ```ts
 import { compileMystProject, renderMystPage } from 'astro-myst/loaders';
@@ -112,7 +169,7 @@ const { html, headings } = await renderMystPage(build.pages.get('theory')!, {
 | `readAsset(url)` | Returns the text of a file written by mystmd (large notebook outputs are stored as files), or `undefined` |
 | `codeThemes`, `handlers`, `numberedCitations`, `labels` | The [render settings](#ref-options-render) |
 
-`headings` is a list of `MarkdownHeading`: `{ depth, slug, text }`.
+`headings` is a list of `MarkdownHeading`: `{ depth, slug, text }`. `parts` maps the name of each part given in the page's frontmatter (`abstract`, `acknowledgments`, …) to its HTML, which `html` contains too.
 
 ## Low-level: compiling a MyST project
 

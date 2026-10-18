@@ -14,6 +14,7 @@ const TYPES: Record<string, string> = {
   '.avif': 'image/avif',
   '.bib': 'text/x-bibtex; charset=utf-8',
   '.csv': 'text/csv; charset=utf-8',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   '.gif': 'image/gif',
   '.html': 'text/html; charset=utf-8',
   '.ico': 'image/x-icon',
@@ -32,6 +33,7 @@ const TYPES: Record<string, string> = {
   '.wav': 'audio/wav',
   '.webm': 'video/webm',
   '.webp': 'image/webp',
+  '.xml': 'application/xml',
   '.zip': 'application/zip',
 };
 

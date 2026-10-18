@@ -71,7 +71,14 @@ Parenthetical citations then read `[3]` and narrative ones `Knuth [3]`, and the 
 
 ## The bibliography
 
-astro-myst appends the bibliography to every page that cites something, as a `section.myst-bibliography` with the heading "References". Change the heading with `labels`, on the integration or a loader:
+astro-myst appends the bibliography to every page that cites something, as a `section.myst-bibliography` with the heading "References". To place it elsewhere, for example before an appendix, put a `{bibliography}` directive where it should go; the references then appear there, once:
+
+````markdown
+```{bibliography}
+```
+````
+
+Change the heading with `labels`, on the integration or a loader:
 
 ```ts
 myst({ labels: { references: 'Bibliography' } });

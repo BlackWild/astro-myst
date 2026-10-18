@@ -83,6 +83,8 @@ export interface RenderOptions extends MystRenderSettings {
 export interface RenderResult {
   html: string;
   headings: MarkdownHeading[];
+  /** HTML of each part given in the frontmatter (`abstract`, `acknowledgments`, ...), also included in `html`. */
+  parts: Record<string, string>;
 }
 
 const DEFAULT_THEMES = { light: 'github-light', dark: 'github-dark' };
@@ -98,6 +100,13 @@ const raw = (value: string): RawNode => ({ type: 'raw', value });
 const text = (value: string): HastChild => ({ type: 'text', value });
 const cap = (s = '') => s.charAt(0).toUpperCase() + s.slice(1);
 const cls = (...names: unknown[]) => names.filter((n) => typeof n === 'string' && n).join(' ') || undefined;
+/** `{button}` gives links and cross-references MyST's class `button`; add the prefixed one for styling. */
+const linkClass = (...names: unknown[]) => {
+  const all = cls(...names);
+  return all && /(^|\s)button(\s|$)/.test(all) ? cls(all, 'myst-button') : all;
+};
+/** Frontmatter parts placed before the content, as in MyST's themes; other parts follow the content. */
+const LEADING_PARTS = ['abstract', 'summary', 'keypoints'];
 const PART_TITLES: Record<string, string> = {
   abstract: 'Abstract',
   summary: 'Summary',
@@ -114,6 +123,115 @@ const PART_TITLES: Record<string, string> = {
 export const citeId = (label: string) =>
   `cite-${label.replace(/^https?:\/\/(dx\.)?doi\.org\//i, 'doi-').replace(/[^\w.-]+/g, '-')}`;
 const LANG_ALIASES: Record<string, string> = { ipython3: 'python', ipython: 'python', python3: 'python', 'c++': 'cpp' };
+
+const SI_PREFIXES: Record<string, string> = {
+  quecto: 'q',
+  ronto: 'r',
+  yocto: 'y',
+  zepto: 'z',
+  atto: 'a',
+  femto: 'f',
+  pico: 'p',
+  nano: 'n',
+  micro: 'µ',
+  milli: 'm',
+  centi: 'c',
+  deci: 'd',
+  deca: 'da',
+  deka: 'da',
+  hecto: 'h',
+  kilo: 'k',
+  mega: 'M',
+  giga: 'G',
+  tera: 'T',
+  peta: 'P',
+  exa: 'E',
+  zetta: 'Z',
+  yotta: 'Y',
+  ronna: 'R',
+  quetta: 'Q',
+};
+const SI_UNITS: Record<string, string> = {
+  metre: 'm',
+  meter: 'm',
+  gram: 'g',
+  second: 's',
+  ampere: 'A',
+  kelvin: 'K',
+  mole: 'mol',
+  candela: 'cd',
+  hertz: 'Hz',
+  newton: 'N',
+  pascal: 'Pa',
+  joule: 'J',
+  watt: 'W',
+  coulomb: 'C',
+  volt: 'V',
+  farad: 'F',
+  ohm: 'Ω',
+  siemens: 'S',
+  weber: 'Wb',
+  tesla: 'T',
+  henry: 'H',
+  degreeCelsius: '°C',
+  lumen: 'lm',
+  lux: 'lx',
+  becquerel: 'Bq',
+  gray: 'Gy',
+  sievert: 'Sv',
+  katal: 'kat',
+  radian: 'rad',
+  steradian: 'sr',
+  litre: 'L',
+  liter: 'L',
+  electronvolt: 'eV',
+  dalton: 'Da',
+  minute: 'min',
+  hour: 'h',
+  day: 'd',
+  degree: '°',
+  arcminute: '′',
+  arcsecond: '″',
+  hectare: 'ha',
+  tonne: 't',
+  bar: 'bar',
+  angstrom: 'Å',
+  percent: '%',
+  astronomicalunit: 'au',
+  bel: 'B',
+  decibel: 'dB',
+  neper: 'Np',
+};
+const SI_POWERS: Record<string, number> = { squared: 2, cubed: 3 };
+const SI_POWER_PREFIXES: Record<string, number> = { square: 2, cubic: 3 };
+
+/**
+ * `{si}` units from the macro names mystmd parsed (`["metre", "per", "second", "squared"]`), as
+ * siunitx typesets them: "m s⁻²". `undefined` for names it does not know.
+ */
+function siUnit(units: unknown): { symbol: string; power: number }[] | undefined {
+  if (!Array.isArray(units) || !units.length) return undefined;
+  const out: { symbol: string; power: number }[] = [];
+  let prefix = '';
+  let per = false;
+  let power = 1;
+  for (const name of units) {
+    if (name === 'per') per = true;
+    else if (name in SI_POWER_PREFIXES) power = SI_POWER_PREFIXES[name];
+    else if (name in SI_PREFIXES) prefix += SI_PREFIXES[name];
+    else if (name in SI_POWERS) {
+      const last = out[out.length - 1];
+      if (!last) return undefined;
+      last.power *= SI_POWERS[name];
+    } else if (name in SI_UNITS) {
+      out.push({ symbol: prefix + SI_UNITS[name], power: per ? -power : power });
+      prefix = '';
+      per = false;
+      power = 1;
+    } else return undefined;
+  }
+  return prefix || per || power !== 1 ? undefined : out;
+}
 
 function toText(node: MystNode): string {
   if (node.type === 'inlineMath' || node.type === 'math') return node.value ?? '';
@@ -136,6 +254,8 @@ class MystRenderer {
   readonly ctx: MystRenderContext;
   private footnotes = new Map<string, { enumerator: string; node: MystNode }>();
   private footnoteRefs = new Map<string, number>();
+  /** Whether a `{bibliography}` directive placed the references; otherwise they are appended. */
+  bibliographyPlaced = false;
   private tabSets = 0;
   private highlighter?: Highlighter;
   private langs = new Set<string>();
@@ -239,6 +359,10 @@ class MystRenderer {
       case 'block': {
         // Document parts: `\begin{abstract}` in LaTeX, `+++ {"part": "abstract"}` in MyST.
         const part = typeof n.data?.part === 'string' ? n.data.part : undefined;
+        // {toc}: a list of links that mystmd builds, marked as a "toc:<context>" part.
+        if (part?.startsWith('toc:')) {
+          return [this.el('nav', { class: cls('myst-toc', n.class), dataTocContext: part.slice(4) }, kids())];
+        }
         if (part) {
           const title = PART_TITLES[part.toLowerCase()] ?? cap(part.replace(/[_-]+/g, ' '));
           return [
@@ -353,7 +477,7 @@ class MystRenderer {
             {
               href,
               title: n.title,
-              class: n.class,
+              class: linkClass(n.class),
               ...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {}),
             },
             kids(),
@@ -380,7 +504,7 @@ class MystRenderer {
           this.el(
             'a',
             {
-              class: 'myst-xref',
+              class: linkClass('myst-xref', n.class),
               href,
               dataXrefKind: n.kind,
               dataXrefRemote: n.remote ? 'true' : undefined,
@@ -696,6 +820,7 @@ class MystRenderer {
                 name: `tabset-${set}`,
                 id: `tabset-${set}-${i}`,
                 checked: i === selected,
+                dataMystSync: item.sync, // `:sync:` key, for the syncTabs script
               }),
               this.el('label', { htmlFor: `tabset-${set}-${i}` }, item.title ?? `Tab ${i + 1}`),
               this.el('div', { class: 'myst-tab-panel', role: 'tabpanel' }, this.all(item)),
@@ -709,8 +834,40 @@ class MystRenderer {
         return [this.el('div', { class: n.class, style: n.style }, kids())];
       case 'span':
         return [this.el('span', { class: n.class, style: n.style }, kids())];
-      case 'si':
-        return [this.el('span', { class: 'myst-si', title: n.alt }, n.value ?? toText(n))];
+      case 'si': {
+        // mystmd's own `unit` joins compound units badly ("mperssquared"); typeset them from `units`.
+        const units = siUnit(n.units);
+        if (!units || n.number === undefined) {
+          return [this.el('span', { class: 'myst-si', title: n.alt }, n.value ?? toText(n))];
+        }
+        const unit = units.flatMap((u, i) => [
+          ...(i ? [text('\u2009')] : []),
+          text(u.symbol),
+          ...(u.power !== 1 ? [this.el('sup', null, String(u.power).replace('-', '−'))] : []),
+        ]);
+        return [this.el('span', { class: 'myst-si', title: n.alt }, [text(`${n.number}\u00a0`), ...unit])];
+      }
+      case 'chemicalFormula': {
+        // {chem}`H2O`: numbers become subscripts, as in MyST's themes.
+        const parts = String(n.value ?? toText(n)).split(/(\d+)/);
+        return [
+          this.el(
+            'span',
+            { class: 'myst-chem' },
+            parts.filter(Boolean).map((p) => (/^\d+$/.test(p) ? this.el('sub', null, p) : text(p))),
+          ),
+        ];
+      }
+      case 'inlineExpression': {
+        // {eval}`x`: mystmd puts the result of the executed expression into the children.
+        const plain = n.result?.data?.['text/plain'];
+        const content = n.children?.length ? kids() : typeof plain === 'string' ? [text(plain)] : [];
+        return [this.el('span', { class: 'myst-eval', dataExpression: n.value }, content)];
+      }
+      case 'bibliography':
+        // {bibliography}: the references go here instead of at the end of the page.
+        this.bibliographyPlaced = true;
+        return this.bibliographySection();
       case 'button':
         return [this.el('a', { class: 'myst-button', href: n.url }, kids())];
 
@@ -854,7 +1011,26 @@ class MystRenderer {
 export async function renderMystPage(page: MystPageJson, opts: RenderOptions): Promise<RenderResult> {
   const renderer = new MystRenderer(page, opts);
   await renderer.prepare();
+  // Parts written in the frontmatter (`abstract: ...`) are not in the page's AST.
+  const parts: Record<string, string> = {};
+  const leading: HastChild[] = [];
+  const trailing: HastChild[] = [];
+  for (const [name, part] of Object.entries<any>(page.frontmatter?.parts ?? {})) {
+    if (!part?.mdast) continue;
+    const out = renderer.one(part.mdast);
+    parts[name] = toHtml({ type: 'root', children: out } as any, { allowDangerousHtml: true });
+    (LEADING_PARTS.includes(name.toLowerCase()) ? leading : trailing).push(...out);
+  }
   const body = renderer.one(page.mdast);
-  const tree = { type: 'root', children: [...body, ...renderer.footnotesSection(), ...renderer.bibliographySection()] };
-  return { html: toHtml(tree as any, { allowDangerousHtml: true }), headings: renderer.headings };
+  const tree = {
+    type: 'root',
+    children: [
+      ...leading,
+      ...body,
+      ...trailing,
+      ...renderer.footnotesSection(),
+      ...(renderer.bibliographyPlaced ? [] : renderer.bibliographySection()),
+    ],
+  };
+  return { html: toHtml(tree as any, { allowDangerousHtml: true }), headings: renderer.headings, parts };
 }

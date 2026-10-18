@@ -11,14 +11,24 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { Loader, LoaderContext } from 'astro/loaders';
 import { ASSETS_DIR, isInside } from './assets.js';
 import { compileMystProject, readMystBuild, resolveCommand } from './compile.js';
+import {
+  EXPORT_FORMATS,
+  exportedMystFormats,
+  exportFlags,
+  type MystExports,
+  type ResolvedExports,
+  resolveExports,
+} from './exports.js';
 import type { MystProjectOptions } from './integration.js';
 import {
   createProjectConfig,
   DEFAULT_PATTERN,
+  EXPORTS_DIR,
   entryIdFromPath,
   findSources,
   IGNORED_DIRS,
   type MystTocEntry,
+  type PlannedExport,
   readFrontmatter,
   sourceFileOf,
   writeProject,
@@ -51,6 +61,12 @@ export interface MystLoaderOptions extends MystRenderSettings {
   /** Extra `myst build` flags for this collection, e.g. `["--execute"]`. */
   args?: string[];
   /**
+   * Files to export the pages in, such as `['pdf', 'docx']`, listed in `data.myst.exports` for
+   * download links. Merged over the integration's `exports`. Exports are made by `astro build`
+   * (in `astro dev` too with `dev: true`).
+   */
+  exports?: MystExports;
+  /**
    * Files or folders outside `base` that pages read (e.g. `{include} ../README.md`), relative to
    * the Astro root. They are watched in dev and part of the cache key.
    */
@@ -59,6 +75,13 @@ export interface MystLoaderOptions extends MystRenderSettings {
   generateId?: (options: { entry: string; base: URL; data: Record<string, unknown> }) => string;
   /** Reuse the previous mystmd build while no input changed. Default: `true`. */
   cache?: boolean;
+}
+
+/** A toc group or parent page of an entry. */
+interface MystParent {
+  title: string;
+  /** Entry id, when the parent is a page. */
+  id?: string;
 }
 
 type StoreEntry = Parameters<LoaderContext['store']['set']>[0] & {
@@ -94,20 +117,63 @@ function fingerprint(inputs: string[], excluded: string[], extra: unknown): stri
   return hash.digest('hex');
 }
 
-/** Copy the assets the pages use from mystmd's output to `dir`, replacing its previous contents. */
-function publishAssets(publicDir: string, used: Set<string>, dir: string) {
+/** Frontmatter `downloads` as resolved by mystmd, with files served from the collection's assets. */
+function downloadsOf(downloads: unknown, resolveAssetUrl: (url: string) => string) {
+  if (!Array.isArray(downloads)) return undefined;
+  const out = downloads
+    .filter((d) => typeof d?.url === 'string')
+    .map((d) =>
+      definedOnly({
+        title: str(d.title) ?? str(d.filename) ?? d.url,
+        url: d.static ? resolveAssetUrl(d.url) : d.url,
+        filename: str(d.filename),
+        format: str(d.format),
+      }),
+    );
+  return out.length ? out : undefined;
+}
+
+/**
+ * Copy the assets the pages use from mystmd's output, and the exported files (by their path in
+ * `dir`), to `dir`, replacing its previous contents.
+ */
+function publishAssets(publicDir: string, used: Set<string>, exported: Map<string, string>, dir: string) {
   const tmp = `${dir}.tmp`;
   fs.rmSync(tmp, { recursive: true, force: true });
   fs.mkdirSync(tmp, { recursive: true });
+  const files = new Map(exported);
   for (const rel of used) {
     const src = path.join(publicDir, ...rel.split('/'));
-    if (!isInside(src, publicDir) || !fs.existsSync(src)) continue;
+    if (isInside(src, publicDir)) files.set(rel, src);
+  }
+  for (const [rel, src] of files) {
+    if (!fs.existsSync(src)) continue;
     const dest = path.join(tmp, ...rel.split('/'));
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.copyFileSync(src, dest);
   }
   fs.rmSync(dir, { recursive: true, force: true });
   fs.renameSync(tmp, dir);
+}
+
+/** Exports declared in a page's own frontmatter with an `output` would be written next to the page. */
+function checkPageExports(file: string, rel: string, built: Set<string>) {
+  if (!/\.md$/i.test(file)) return;
+  const declared = readFrontmatter(fs.readFileSync(file, 'utf8')).data.exports;
+  for (const exp of Array.isArray(declared) ? declared : []) {
+    if (typeof exp?.output !== 'string') continue;
+    const ext = path.extname(exp.output).toLowerCase();
+    const inferred = { '.pdf': 'pdf', '.tex': 'tex', '.typ': 'typst', '.docx': 'docx', '.md': 'md', '.xml': 'xml' }[
+      ext
+    ];
+    const format = String(exp.format ?? inferred ?? '').toLowerCase();
+    if (built.has(format === 'jats' ? 'xml' : format)) {
+      throw new Error(
+        `${rel}: the export "${exp.output}" in the frontmatter would be written next to your content. ` +
+          'Remove its `output` (astro-myst publishes exports itself; see the `exports` option).',
+      );
+    }
+  }
 }
 
 /**
@@ -145,7 +211,8 @@ export function mystLoader(options: MystLoaderOptions) {
         labels: { ...global.labels, ...options.labels },
       };
       const project = { ...global.project, ...options.project };
-      const args = [...(global.args ?? []), ...(options.args ?? [])];
+      const exports: ResolvedExports | undefined = resolveExports(global.exports, options.exports, Boolean(watcher));
+      const args = [...(global.args ?? []), ...(options.args ?? []), ...exportFlags(exports)];
       const urlOpts = { base: config.base ?? '/', trailingSlash: (config.trailingSlash ?? 'ignore') as TrailingSlash };
       const assetsUrlDir = `${ASSETS_DIR}/${collection}`;
       const route = options.route ?? `/${collection}`;
@@ -159,6 +226,7 @@ export function mystLoader(options: MystLoaderOptions) {
         path.join(astroRoot, 'node_modules'),
       ].filter((dir) => !isInside(baseDir, dir)); // unless it contains the content itself
       let inputs = [baseDir, ...extraInputs];
+      let plannedExports: PlannedExport[] = [];
 
       const compile = async (force: boolean): Promise<MystBuild> => {
         if (!fs.existsSync(baseDir)) throw new Error(`The content folder ${options.base} does not exist.`);
@@ -172,7 +240,9 @@ export function mystLoader(options: MystLoaderOptions) {
           toc: options.toc,
           project,
           execute: args.includes('--execute'),
+          exports,
         });
+        plannedExports = projectConfig.exports;
         inputs = [baseDir, ...extraInputs, ...projectConfig.inputs];
         watcher?.add(inputs);
         const { label } = resolveCommand({ root: projectDir, resolveFrom: astroRoot, command: global.command });
@@ -182,7 +252,12 @@ export function mystLoader(options: MystLoaderOptions) {
           logger.info('MyST sources unchanged; reusing the previous mystmd build');
           return readMystBuild(projectDir, logger, label);
         }
+        if (exports) {
+          const built = exportedMystFormats(exports);
+          for (const rel of sources) checkPageExports(path.join(baseDir, rel), rel, built);
+        }
         writeProject(projectDir, projectConfig, collection);
+        fs.rmSync(path.join(projectDir, EXPORTS_DIR), { recursive: true, force: true }); // no stale exports
         const build = await compileMystProject({
           root: projectDir,
           resolveFrom: astroRoot,
@@ -198,13 +273,24 @@ export function mystLoader(options: MystLoaderOptions) {
         const mystProject = build.config.projects?.[0];
         if (!mystProject) throw new Error('mystmd produced no project.');
         const indexSlug: string = mystProject.index ?? 'index';
-        const toc = [{ slug: indexSlug, level: 1 }, ...(mystProject.pages ?? []).filter((p: any) => p.slug)];
+        // Pages and groups (toc entries with a title but no file) in reading order.
+        const toc: { slug?: string; title?: string; level?: number; enumerator?: string }[] = [
+          { slug: indexSlug, level: 1 },
+          ...(mystProject.pages ?? []),
+        ];
 
-        // First pass: which file each page comes from, its entry id and URL.
+        // First pass: which file each page comes from, its entry id, URL and place in the toc.
         const pages = [];
         const byMystUrl = new Map<string, string>();
         const ids = new Map<string, string>();
-        for (const { slug, level, enumerator } of toc) {
+        const ancestors: { level: number; parent: MystParent }[] = [];
+        for (const { slug, title, level = 1, enumerator } of toc) {
+          while (ancestors.length && ancestors[ancestors.length - 1].level >= level) ancestors.pop();
+          const parents = ancestors.map((a) => a.parent);
+          if (!slug) {
+            if (title) ancestors.push({ level, parent: { title } });
+            continue;
+          }
           const page = build.pages.get(slug);
           if (!page) continue;
           const file = sourceFileOf(page.location, projectDir, baseDir);
@@ -220,7 +306,9 @@ export function mystLoader(options: MystLoaderOptions) {
           ids.set(id, rel);
           const url = pageUrl(urlOpts, routeFor(route, id));
           byMystUrl.set(slug === indexSlug ? '/' : `/${slug}`, url);
-          pages.push({ page, file, rel, raw, body, id, url, level: level ?? 1, enumerator });
+          pages.push({ page, file, rel, raw, body, id, url, level, enumerator, parents });
+          const pageTitle = str(page.frontmatter?.short_title) ?? str(page.frontmatter?.title) ?? str(title) ?? id;
+          ancestors.push({ level, parent: { title: pageTitle, id } });
         }
 
         // Second pass: render, keeping track of the assets the pages use.
@@ -239,9 +327,42 @@ export function mystLoader(options: MystLoaderOptions) {
             return undefined;
           }
         };
+        // Exported files, published as exports/<format>/<entry id or collection>.<ext>.
+        const exported = new Map<string, string>();
+        const exportDownload = (exp: PlannedExport, name: string, filename: string) => {
+          const { ext, title } = EXPORT_FORMATS[exp.format];
+          const what = exp.scope === 'page' ? posix(path.relative(baseDir, exp.source!)) : 'the collection';
+          if (!fs.existsSync(exp.output)) {
+            const message = `mystmd did not export ${what} as ${title}; see its messages above.`;
+            if (!watcher) throw new Error(message);
+            logger.warn(message);
+            return [];
+          }
+          const rel = `exports/${exp.format}/${name}${ext}`;
+          exported.set(rel, exp.output);
+          const relUrl = rel.split('/').map(encodeURIComponent).join('/');
+          return [
+            {
+              title: exp.scope === 'collection' ? `${title} (all pages)` : title,
+              url: assetUrl({ base: urlOpts.base, assetsDir: assetsUrlDir }, relUrl),
+              filename: `${filename}${ext}`,
+              format: exp.format,
+              scope: exp.scope,
+            },
+          ];
+        };
+        const collectionName = collection.replace(/[^\w.-]+/g, '-');
+        const collectionExports = plannedExports
+          .filter((exp) => exp.scope === 'collection')
+          .flatMap((exp) => exportDownload(exp, collectionName, collectionName));
+
         const entries: StoreEntry[] = [];
-        for (const [order, { page, file, raw, body, id, url, level, enumerator }] of pages.entries()) {
-          const { html, headings } = await renderMystPage(page, {
+        for (const [order, { page, file, raw, body, id, url, level, enumerator, parents }] of pages.entries()) {
+          const pageExports = plannedExports
+            .filter((exp) => exp.scope === 'page' && exp.source === file)
+            .flatMap((exp) => exportDownload(exp, id, path.basename(file).replace(/\.[^.]+$/, '')));
+          const allExports = [...pageExports, ...collectionExports];
+          const { html, headings, parts } = await renderMystPage(page, {
             ...settings,
             resolvePageUrl: (mystUrl) => byMystUrl.get(mystUrl.replace(/\/+$/, '') || '/'),
             resolveAssetUrl,
@@ -270,6 +391,10 @@ export function mystLoader(options: MystLoaderOptions) {
               level,
               enumerator: fm.enumerator ?? enumerator,
               kind: page.kind ?? 'Article',
+              parents,
+              parts: Object.keys(parts).length ? parts : undefined,
+              downloads: downloadsOf(fm.downloads, resolveAssetUrl),
+              exports: allExports.length ? allExports : undefined,
             }),
           };
           entries.push({
@@ -281,14 +406,14 @@ export function mystLoader(options: MystLoaderOptions) {
             rendered: { html, metadata: { headings, frontmatter: fm } },
           });
         }
-        return { entries, used };
+        return { entries, used, exported };
       };
 
       const sync = async (force = false) => {
         try {
           const build = await compile(force);
-          const { entries, used } = await prepare(build); // render everything before touching the store
-          publishAssets(build.publicDir, used, assetsDir);
+          const { entries, used, exported } = await prepare(build); // render everything before touching the store
+          publishAssets(build.publicDir, used, exported, assetsDir);
           getState()?.assets.set(collection, assetsDir);
           store.clear();
           for (const entry of entries) store.set(entry);
