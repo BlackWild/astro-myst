@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2
+
+### Patch Changes
+
+- [#6](https://github.com/BlackWild/astro-myst/pull/6) [`9fa1108`](https://github.com/BlackWild/astro-myst/commit/9fa110804b9897f44f5433b974a791cf790d353f) Thanks [@BlackWild](https://github.com/BlackWild)! - Images now get both `width` and `height` as CSS, as in MyST's own theme: `:height: 40%` was written as the HTML attribute `height="40%"`, which browsers read as 40 pixels, and heights had no effect inside figures. `.mp4` files in `{image}`, `{figure}` and `![](...)` render as looping, muted `<video>` elements instead of broken images.
+
+- [#6](https://github.com/BlackWild/astro-myst/pull/6) [`4e56ad5`](https://github.com/BlackWild/astro-myst/commit/4e56ad5fb5dd8a410d26169d5e5d45d64cb245d9) Thanks [@BlackWild](https://github.com/BlackWild)! - Repeated references to the same footnote get unique ids (`fnref-n`, `fnref-n-2`, …) instead of duplicate ones; the footnote's back-link still points to the first reference.
+
 ## 0.1.1
 
 ### Patch Changes
