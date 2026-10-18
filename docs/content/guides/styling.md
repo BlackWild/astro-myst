@@ -32,7 +32,7 @@ export default defineConfig({
 
 - equation numbers beside display math, and horizontal scrolling for wide equations, code blocks and tables;
 - code in dark mode: Shiki colours code blocks for the light theme, and `base.css` switches them to the dark theme;
-- line numbers and emphasized lines in code blocks;
+- line numbers and emphasized lines in code blocks, and the position of the copy button that the optional `copyCode` [script](#ref-options-scripts) adds (top right, shown on hover);
 - tabs that work without JavaScript, and `{grid}` columns per breakpoint (576, 768 and 992 px);
 - responsive images and videos in figures, sub-figures side by side, and `:align: left` / `right` floats;
 - heading anchors (`#`) that appear on hover and focus;
@@ -43,7 +43,7 @@ Every selector is wrapped in `:where()`, which gives it zero specificity, and si
 
 ## The optional theme
 
-`styles: 'theme'` adds `theme.css`, a small, neutral look for admonitions, proofs and theorems, cards, tabs, figures and captions, tables, code blocks, cross-references, footnotes and the bibliography, sidebars, notebook outputs and hover previews. Its selectors have zero specificity and sit in the same layer. This documentation uses it.
+`styles: 'theme'` adds `theme.css`, a small, neutral look for admonitions, proofs and theorems, cards, tabs, figures and captions, tables, code blocks and their copy buttons, cross-references, `{button}` links, footnotes and the bibliography, margin notes and sidebars, notebook outputs and hover previews. Its selectors have zero specificity and sit in the same layer. This documentation uses it.
 
 The theme styles MyST components (everything with a `myst-` class) wherever they appear. Plain elements are styled only inside an element with the class `myst`: tables, and the scroll offset and highlight of link targets such as headings. Put the class on the element that wraps `<Content />`:
 
@@ -53,6 +53,19 @@ The theme styles MyST components (everything with a `myst-` class) wherever they
   <Content />
 </article>
 ```
+
+(guide-styling-margin)=
+### Margin notes
+
+`{margin}` and `{aside}` notes float to the right of the text, and so do `{sidebar}` boxes. MyST's own themes put margin notes into a column beside the text instead. With the theme, add the class `myst-margin-column` next to `myst` when your layout leaves room on the right of the content, and margin notes hang in the page margin on screens at least 1280 px wide:
+
+```astro
+<article class="myst myst-margin-column" style="--myst-margin-width: 12rem">
+  <Content />
+</article>
+```
+
+`--myst-margin-width` (default `14rem`) is the width of the notes; they need that much room plus `2rem` right of the content. On narrower screens they float as before.
 
 ### Colours
 

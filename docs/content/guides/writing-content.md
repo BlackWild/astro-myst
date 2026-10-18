@@ -36,6 +36,22 @@ myst({
 });
 ```
 
+(guide-writing-parts)=
+## Abstracts and other parts
+
+An abstract, a summary or acknowledgments can go into the frontmatter, or into the body as a block marked with `+++ {"part": "abstract"}`; LaTeX's `\begin{abstract}` works too. MyST calls them parts:
+
+```yaml
+---
+title: Measuring decay
+abstract: |
+  We measure how the oscillations *decay*.
+acknowledgments: We thank the reviewers.
+---
+```
+
+Each part becomes a `section.myst-part` with a heading. Parts from the frontmatter are placed as in MyST's themes: `abstract`, `summary` and `keypoints` before the content, the others after it. Their HTML is also in `data.myst.parts`, for example to show abstracts in a list of posts (see [](#ref-entry-data-parts)).
+
 (sec-numbering)=
 ## Labels, numbering and references
 
@@ -137,18 +153,44 @@ Content that is hidden until opened.
 
 ::::{tab-set}
 :::{tab-item} npm
+:sync: npm
 ```sh
 npm install astro-myst mystmd
 ```
 :::
 :::{tab-item} pnpm
+:sync: pnpm
 ```sh
 pnpm add astro-myst mystmd
 ```
 :::
 :::{tab-item} yarn
+:sync: yarn
 ```sh
 yarn add astro-myst mystmd
+```
+:::
+::::
+
+Tabs with the same `:sync:` key switch together across the page: pick a tab above and this tab set follows. The integration's `syncTabs` script does that; it is on by default (see [](#ref-options-scripts)).
+
+::::{tab-set}
+:::{tab-item} npm
+:sync: npm
+```sh
+npm run dev
+```
+:::
+:::{tab-item} pnpm
+:sync: pnpm
+```sh
+pnpm dev
+```
+:::
+:::{tab-item} yarn
+:sync: yarn
+```sh
+yarn dev
 ```
 :::
 ::::
@@ -174,7 +216,7 @@ import { mystLoader } from 'astro-myst/loaders';
 export const collections = { blog: defineCollection({ loader: mystLoader({ base: './src/content/blog' }) }) };
 ```
 
-Code is highlighted with [Shiki](https://shiki.style) at build time; labelled listings such as @code-loader are numbered. To change the colours, see [](#guide-styling).
+Code is highlighted with [Shiki](https://shiki.style) at build time; labelled listings such as @code-loader are numbered. To change the colours, see [](#guide-styling). The copy button that appears when you point at the listing comes from the integration's `copyCode` script, which this site turns on (`myst({ scripts: { copyCode: true } })`, see [](#ref-options-scripts)).
 
 ## Including files
 
@@ -193,4 +235,21 @@ Footnotes are numbered per page.[^note] Abbreviations defined in the `project` o
 
 [^note]: Like this one.
 
-Other MyST features — `{embed}`, glossaries and terms, `{button}` links, cards and grids, `{iframe}`, `{mermaid}` — work as well. Mermaid diagrams are emitted as `pre.mermaid` with the diagram source, for [Mermaid.js](https://mermaid.js.org) to draw in the browser. Unknown directives from MyST plugins render as a visible placeholder until you add a [custom renderer](#guide-custom-renderers).
+Roles for inline markup work as in MyST: {sub}`subscripts`, {sup}`superscripts`, {kbd}`Ctrl` + {kbd}`C`, {sc}`small caps`, chemical formulas such as {chem}`H2O` and {chem}`C6H12O6` (numbers become subscripts) and units such as {si}`9.81 <\metre\per\second\squared>`, typeset as siunitx does.
+
+```{margin}
+A margin note. It floats to the right of the text, or hangs in the page margin when the layout makes room for it (see [](#guide-styling-margin)).
+```
+
+`{margin}` and `{aside}` put a note beside the text; `{sidebar}` a larger box. `{button}` makes a link look like a button: {button}`Get started <#getting-started>`. With the optional theme it has a solid background; without it, style `.myst-button` yourself.
+
+Other MyST features — `{embed}`, glossaries and terms, cards and grids, `{iframe}`, `{toc}` (a list of links to the page's headings, the section's or the project's pages, in a `nav.myst-toc`) — work as well. Unknown directives from MyST plugins render as a visible placeholder until you add a [custom renderer](#guide-custom-renderers).
+
+## Diagrams
+
+`{mermaid}` diagrams are emitted as `pre.mermaid` with the diagram source. With the integration's `mermaid` script (`myst({ scripts: { mermaid: true } })`, after `npm install mermaid`), [Mermaid.js](https://mermaid.js.org) draws them in the browser, in dark mode too; it is loaded only on pages with a diagram:
+
+```{mermaid}
+flowchart LR
+  A[MyST files] --> B[mystmd] --> C[astro-myst] --> D[Astro pages]
+```

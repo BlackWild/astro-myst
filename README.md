@@ -28,9 +28,11 @@ Astro renders Markdown one file at a time, so it cannot number a figure in one f
 - cross-references that work **across pages**, with hover previews
 - citations from BibTeX or bare DOIs, with a bibliography on every page
 - KaTeX math rendered at build time, admonitions, tabs, cards, grids, proofs, footnotes, glossaries
-- **LaTeX** (`.tex`) and **Jupyter notebook** (`.ipynb`) pages next to Markdown ones
+- **LaTeX** (`.tex`) and **Jupyter notebook** (`.ipynb`) pages next to Markdown ones, with optional execution
+- **exports** of every page or a whole collection to PDF (LaTeX or Typst), Word, LaTeX, Markdown and JATS, served as downloads
+- navigation data: the table of contents as a tree with groups, previous/next pages and breadcrumbs
 
-It fits into Astro like its own Markdown support: **no `myst.yml`** (MyST options go in your Astro config), your own frontmatter and schemas, entries that work with `getCollection()`, `render()` and `<Content />`, images served by the dev server and exported with the build — nothing is generated next to your content or in `public/`. The default styles only make MyST content work and never fight your CSS, so it pairs well with Tailwind and `prose` for blogs, and an optional theme is one option away.
+It fits into Astro like its own Markdown support: **no `myst.yml`** (MyST options go in your Astro config), your own frontmatter and schemas, entries that work with `getCollection()`, `render()` and `<Content />`, images served by the dev server and exported with the build — nothing is generated next to your content or in `public/`. The default styles only make MyST content work and never fight your CSS, so it pairs well with Tailwind and `prose` for blogs, and an optional theme is one option away; so are small scripts for copy buttons on code, Mermaid diagrams and synchronized tabs. The [feature list](https://blackwild.github.io/astro-myst/reference/myst-features) tracks which MyST features are supported.
 
 ## Quick start
 

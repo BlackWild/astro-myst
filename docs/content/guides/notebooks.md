@@ -37,6 +37,21 @@ Jupyter and the notebook's kernel must be installed where the build runs; for Py
 
 mystmd starts a Jupyter server whose root is the project folder, and Jupyter refuses to run files outside its root. So, when a collection has something to execute, the generated project reaches the collection's folder through a link, `node_modules/.astro/astro-myst/<collection>/source` (a symbolic link, or a junction on Windows), and mystmd reads every page of the collection through it. Nothing is written into your content folder. One consequence: while executing, paths that leave the collection's folder, such as `{include} ../../README.md` or an image in a sibling folder, do not resolve; keep what executed collections use inside their `base` folder, or move `base` up to a folder that contains it.
 
+
+### Inline expressions
+
+In a Markdown page that is executed (one with a `kernelspec`), the `{eval}` role inserts the value of an expression into the text:
+
+````markdown
+```{code-cell} python
+x = 6 * 7
+```
+
+The answer is {eval}`x`.
+````
+
+The result is rendered as `span.myst-eval` with the expression in `data-expression`. Without `--execute` there is no result, and the span stays empty.
+
 ## Cell tags
 
 The usual tags work: `remove-cell`, `remove-input` and `remove-output` leave the content out of the page, and `hide-cell`, `hide-input` and `hide-output` put it in a collapsed `details.myst-hidden` element, with a summary such as "Show code".
