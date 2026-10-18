@@ -177,6 +177,17 @@ describe('renderMystPage', () => {
     expect(html).toContain('<li id="cite-k84">Knuth, D. (1984). <i>The TeXbook</i>.</li>');
   });
 
+  it('keeps ids unique when a footnote is referenced more than once', async () => {
+    const ref = { type: 'footnoteReference', identifier: 'n', enumerator: '1' };
+    const { html } = await render([
+      { type: 'paragraph', children: [ref, t(' and '), ref, t(' and '), ref] },
+      { type: 'footnoteDefinition', identifier: 'n', enumerator: '1', children: [t('Note.')] },
+    ]);
+    expect(html.match(/id="fnref-n[^"]*"/g)).toEqual(['id="fnref-n"', 'id="fnref-n-2"', 'id="fnref-n-3"']);
+    expect(html.match(/href="#fn-n"/g)).toHaveLength(3);
+    expect(html).toContain('<a class="footnote-backref" href="#fnref-n"');
+  });
+
   it('rewrites internal page links and static asset links only', async () => {
     const { html } = await render([
       {

@@ -128,6 +128,7 @@ class MystRenderer {
   readonly headings: MarkdownHeading[] = [];
   readonly ctx: MystRenderContext;
   private footnotes = new Map<string, { enumerator: string; node: MystNode }>();
+  private footnoteRefs = new Map<string, number>();
   private tabSets = 0;
   private highlighter?: Highlighter;
   private langs = new Set<string>();
@@ -417,9 +418,13 @@ class MystRenderer {
       case 'footnoteReference': {
         const key: string = n.identifier ?? n.label;
         const num = String(n.enumerator ?? key);
+        // A footnote can be referenced several times; ids must stay unique (the back-link targets the first).
+        const count = (this.footnoteRefs.get(key) ?? 0) + 1;
+        this.footnoteRefs.set(key, count);
+        const refId = count === 1 ? `fnref-${key}` : `fnref-${key}-${count}`;
         return [
           this.el('sup', { class: 'footnote-ref' }, [
-            this.el('a', { href: `#fn-${key}`, id: `fnref-${key}`, ariaLabel: `Footnote ${num}` }, num),
+            this.el('a', { href: `#fn-${key}`, id: refId, ariaLabel: `Footnote ${num}` }, num),
           ]),
         ];
       }
