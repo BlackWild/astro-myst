@@ -2,13 +2,23 @@
 # Enable Pages once: Settings → Pages → Build and deployment → Source: GitHub Actions.
 name: Docs
 
+# Only changes that can change the site rebuild it: the docs, the package that renders them (and its
+# changelog), the pages they include, dependency updates and this workflow. Run it by hand otherwise.
 on:
   push:
     branches: [main]
+    paths:
+      - docs/**
+      - packages/astro-myst/**
+      - CONTRIBUTING.md
+      - package-lock.json
+      - .github/workflows/docs.yml
   pull_request:
     paths:
       - docs/**
       - packages/astro-myst/**
+      - CONTRIBUTING.md
+      - package-lock.json
       - .github/workflows/docs.yml
   workflow_dispatch:
 
