@@ -1,6 +1,6 @@
 {
   "name": "astro-myst",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "MyST Markdown for Astro: an integration and content loader powered by the official mystmd compiler, with numbered figures, equations and sections, cross-references across pages, citations, math, LaTeX sources and notebooks. No myst.yml needed.",
   "keywords": [
     "astro",
