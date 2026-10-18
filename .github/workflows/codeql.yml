@@ -17,6 +17,8 @@ concurrency:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
+    # The "Version Packages" pull request only bumps versions; main is analyzed when it merges.
+    if: ${{ github.head_ref != 'changeset-release/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:

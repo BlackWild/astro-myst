@@ -19,6 +19,34 @@ env:
   ASTRO_TELEMETRY_DISABLED: '1'
 
 jobs:
+  # A release-only change (the "Version Packages" pull request and its merge) contains no code
+  # that has not passed CI on main already: the expensive jobs below are skipped for it.
+  scope:
+    name: Scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      release-only: ${{ steps.scope.outputs.release-only }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Check for a release-only change
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          MERGE_GROUP_BASE: ${{ github.event.merge_group.base_sha }}
+        run: |
+          case "$EVENT" in
+            pull_request) base='HEAD^1' ;; # the tested merge commit's first parent is the base branch
+            push) base="$BEFORE" ;;
+            merge_group) base="$MERGE_GROUP_BASE" ;;
+            *) base='' ;; # workflow_dispatch: run everything
+          esac
+          node .github/scripts/release-only.mjs "$base"
+
   lint:
     name: Lint & format
     runs-on: ubuntu-latest
@@ -32,6 +60,8 @@ jobs:
 
   typecheck:
     name: Type check
+    needs: scope
+    if: ${{ needs.scope.outputs.release-only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -44,6 +74,8 @@ jobs:
 
   test:
     name: Test (${{ matrix.os }}, Node ${{ matrix.node }})
+    needs: scope
+    if: ${{ needs.scope.outputs.release-only != 'true' }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
@@ -103,7 +135,8 @@ jobs:
 
   compat:
     name: Astro ${{ matrix.astro }} · mystmd ${{ matrix.mystmd }}
-    needs: package
+    needs: [scope, package]
+    if: ${{ needs.scope.outputs.release-only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -142,6 +175,8 @@ jobs:
 
   e2e:
     name: End-to-end
+    needs: scope
+    if: ${{ needs.scope.outputs.release-only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -188,3 +223,25 @@ jobs:
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
+
+  # The one status check to require in the branch ruleset: it passes when every job passed or was
+  # skipped. (Skipped matrix jobs do not report their per-entry check names, so requiring those
+  # would block release-only pull requests.)
+  ci-ok:
+    name: CI OK
+    if: ${{ always() }}
+    needs: [scope, lint, typecheck, test, package, compat, e2e, workflows, dependency-review]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check that every job passed or was skipped
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Job results: $RESULTS"
+          for result in $RESULTS; do
+            if [ "$result" != success ] && [ "$result" != skipped ]; then
+              echo "::error::A CI job finished with '$result'."
+              exit 1
+            fi
+          done
