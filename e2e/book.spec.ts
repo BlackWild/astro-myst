@@ -11,6 +11,13 @@ test.describe('book example', () => {
       .first()
       .evaluate((el) => getComputedStyle(el).fontFamily);
     expect(katexFont).toContain('KaTeX');
+    // The fonts from astro-myst/katex.css actually load (not just the font-family declaration).
+    const loaded = await page.evaluate(async () => {
+      await document.fonts.ready;
+      return [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family.replace(/"/g, ''));
+    });
+    expect(loaded).toContain('KaTeX_Main');
+    expect(loaded).toContain('KaTeX_Math');
   });
 
   test('cross-page references navigate to the target', async ({ page }) => {
