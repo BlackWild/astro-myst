@@ -62,6 +62,7 @@ jobs:
     permissions:
       contents: write # commit the version bump
       pull-requests: write # open the "Version Packages" pull request
+      actions: write # start CI on it
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -69,24 +70,23 @@ jobs:
       - uses: $/.github/actions/setup
         with:
           cache: 'false'
-      # Optional: a GitHub App token makes CI run on the Version Packages PR
-      # (pull requests opened with GITHUB_TOKEN do not trigger workflows).
-      - name: Create GitHub App token
-        id: app-token
-        if: ${{ vars.RELEASE_APP_CLIENT_ID != '' }}
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
-        with:
-          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
-          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-          permission-contents: write
-          permission-pull-requests: write
       - name: Create or update the Version Packages pull request
         uses: changesets/action/version@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
-          github-token: ${{ steps.app-token.outputs.token || github.token }}
+          github-token: ${{ github.token }}
           script: npm run version-packages
           commit-message: 'chore: version packages'
           pr-title: 'chore: version packages'
+      # Changes made with GITHUB_TOKEN start no workflows, so CI would not run on the pull request,
+      # and its required "CI OK" check would never report. workflow_dispatch is the documented
+      # exception: start CI on the release branch. Its checks attach to the pull request's commit;
+      # CI recognizes the change as release-only and runs only the quick jobs.
+      - name: Run CI on the Version Packages pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BRANCH: changeset-release/${{ github.ref_name }}
+        run: gh workflow run ci.yml --repo "$REPO" --ref "$BRANCH"
 
   pack:
     name: Pack

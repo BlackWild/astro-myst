@@ -38,12 +38,16 @@ jobs:
           EVENT: ${{ github.event_name }}
           BEFORE: ${{ github.event.before }}
           MERGE_GROUP_BASE: ${{ github.event.merge_group.base_sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           case "$EVENT" in
             pull_request) base='HEAD^1' ;; # the tested merge commit's first parent is the base branch
             push) base="$BEFORE" ;;
             merge_group) base="$MERGE_GROUP_BASE" ;;
-            *) base='' ;; # workflow_dispatch: run everything
+            # Started by hand, or by release.yml for the Version Packages pull request: compare the
+            # branch with the default branch (on the default branch itself, nothing differs: full run).
+            workflow_dispatch) base="$(git merge-base HEAD "origin/$DEFAULT_BRANCH" || true)" ;;
+            *) base='' ;;
           esac
           node .github/scripts/release-only.mjs "$base"
 
