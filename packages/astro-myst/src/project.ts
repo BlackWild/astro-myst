@@ -8,6 +8,7 @@ import path from 'node:path';
 import { slug as githubSlug } from 'github-slugger';
 import { glob } from 'tinyglobby';
 import { parse as parseYaml, stringify as toYaml } from 'yaml';
+import { isInside } from './assets.js';
 import type { MystProjectOptions } from './integration.js';
 
 /** Files of a collection by default: Markdown and notebooks, except names starting with `_` (e.g. included snippets). */
@@ -19,6 +20,13 @@ const IGNORE = IGNORED_DIRS.map((dir) => `**/${dir}/**`);
 
 /** Root page of the generated project when the collection has no index file of its own. */
 export const PLACEHOLDER_INDEX = 'index.md';
+
+/**
+ * Link (symlink, or junction on Windows) from the generated project to the collection's folder.
+ * `myst build --execute` runs notebooks on a Jupyter server whose root is the project folder and
+ * which refuses files outside it, so executable files are listed through this link.
+ */
+export const SOURCE_LINK = 'source';
 
 /** An entry of a MyST table of contents (https://mystmd.org/guide/table-of-contents), with paths relative to the loader's `base`. */
 export interface MystTocEntry {
@@ -81,6 +89,8 @@ export interface ProjectSpec {
   toc?: MystTocEntry[];
   /** Project options, with file paths relative to `astroRoot`. */
   project: MystProjectOptions;
+  /** Whether mystmd executes notebooks (`--execute`): executable files are then listed through `SOURCE_LINK`. */
+  execute?: boolean;
 }
 
 export interface ProjectConfig {
@@ -90,9 +100,23 @@ export interface ProjectConfig {
   placeholder: boolean;
   /** Local files the project options point to (bibliographies, plugins, ...), absolute. */
   inputs: string[];
+  /** Folder that `SOURCE_LINK` must point to, when executable files are listed through it. */
+  link?: string;
 }
 
 const isUrl = (value: string) => /^[a-z][a-z0-9+.-]*:/i.test(value);
+
+/** Whether mystmd can execute a file: a notebook, or Markdown with a `kernelspec` (in the file or the project). */
+function isExecutable(file: string, project: MystProjectOptions): boolean {
+  if (/\.ipynb$/i.test(file)) return true;
+  if (!/\.md$/i.test(file)) return false;
+  if (project.kernelspec !== undefined) return true;
+  try {
+    return readFrontmatter(fs.readFileSync(file, 'utf8')).data.kernelspec !== undefined;
+  } catch {
+    return false;
+  }
+}
 const PATH_OPTIONS = ['bibliography', 'plugins', 'thumbnail', 'banner'];
 
 /** Build the myst.yml of a collection's generated project. */
@@ -122,10 +146,14 @@ export async function createProjectConfig(spec: ProjectSpec): Promise<ProjectCon
     if (bibs.length) project.bibliography = bibs.map((bib) => toProject(path.join(spec.baseDir, bib)));
   }
 
+  // Toc entries first get absolute file paths; they are made relative to the project below.
   const listed = new Set<string>();
+  const files: string[] = [];
   const fileEntry = (rel: string): MystTocEntry => {
     listed.add(rel);
-    return { file: toProject(path.join(spec.baseDir, rel)) };
+    const abs = path.join(spec.baseDir, rel);
+    files.push(abs);
+    return { file: abs };
   };
   const mapEntries = async (entries: MystTocEntry[]): Promise<MystTocEntry[]> => {
     const mapped: MystTocEntry[] = [];
@@ -155,17 +183,70 @@ export async function createProjectConfig(spec: ProjectSpec): Promise<ProjectCon
     placeholder = !index;
     toc = (index ? [index, ...spec.sources.filter((rel) => rel !== index)] : spec.sources).map(fileEntry);
   }
+  // Executed notebooks are listed through the link to the collection's folder, and so are all
+  // other files in it, so that relative links between pages keep matching the paths mystmd knows.
+  const link = spec.execute && files.some((abs) => isExecutable(abs, project)) ? spec.baseDir : undefined;
+  const relative = (entries: MystTocEntry[]) => {
+    for (const entry of entries) {
+      if (typeof entry.file === 'string') {
+        entry.file =
+          link && isInside(entry.file, link)
+            ? posix(path.join(SOURCE_LINK, path.relative(link, entry.file)))
+            : toProject(entry.file);
+      }
+      if (Array.isArray(entry.children)) relative(entry.children);
+    }
+  };
+  relative(toc);
   if (placeholder) toc.unshift({ file: PLACEHOLDER_INDEX });
 
   const yaml = toYaml({ version: 1, project: { ...project, toc }, site: {} });
-  return { yaml, placeholder, inputs };
+  return { yaml, placeholder, inputs, link };
 }
 
-/** Write the generated project (myst.yml and, if needed, the placeholder root page). */
+/**
+ * The source file of a page of the generated project, from its mystmd `location`, or `undefined`
+ * for the placeholder root page.
+ */
+export function sourceFileOf(location: string, projectDir: string, baseDir: string): string | undefined {
+  const file = path.join(projectDir, location);
+  const linkDir = path.join(projectDir, SOURCE_LINK);
+  if (isInside(file, linkDir)) return path.join(baseDir, path.relative(linkDir, file));
+  return isInside(file, projectDir) ? undefined : file;
+}
+
+/** Create, keep or remove the link from the generated project to the collection's folder. Never touches the folder itself. */
+function updateLink(projectDir: string, target: string | undefined) {
+  const link = path.join(projectDir, SOURCE_LINK);
+  let exists = true;
+  try {
+    fs.lstatSync(link);
+  } catch {
+    exists = false;
+  }
+  if (exists && target) {
+    try {
+      if (fs.realpathSync(link) === fs.realpathSync(target)) return;
+    } catch {
+      /* broken link: replace it */
+    }
+  }
+  if (exists) {
+    try {
+      fs.unlinkSync(link);
+    } catch {
+      fs.rmdirSync(link); // a Windows junction
+    }
+  }
+  if (target) fs.symlinkSync(target, link, 'junction'); // the type only matters on Windows
+}
+
+/** Write the generated project (myst.yml and, if needed, the placeholder root page and the source link). */
 export function writeProject(projectDir: string, config: ProjectConfig, title: string) {
   fs.mkdirSync(projectDir, { recursive: true });
   fs.writeFileSync(path.join(projectDir, 'myst.yml'), config.yaml);
   const index = path.join(projectDir, PLACEHOLDER_INDEX);
   if (config.placeholder) fs.writeFileSync(index, `---\ntitle: ${JSON.stringify(title)}\n---\n`);
   else fs.rmSync(index, { force: true });
+  updateLink(projectDir, config.link);
 }

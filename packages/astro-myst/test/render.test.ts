@@ -306,6 +306,9 @@ describe('renderMystPage', () => {
         class: 'dropdown',
         children: [{ type: 'admonitionTitle', children: [t('More')] }],
       },
+      { type: 'details', open: true, children: [{ type: 'summary', children: [t('Open me')] }] },
+      { type: 'aside', children: [t('In the margin')] },
+      { type: 'aside', kind: 'sidebar', children: [t('Beside')] },
     ]);
     expect(html).toContain(
       '<aside class="myst-proof myst-proof-theorem" id="thm"><div class="myst-proof-title"><strong>Theorem 2</strong> (Big)</div>',
@@ -316,11 +319,17 @@ describe('renderMystPage', () => {
     expect(html).toContain(
       '<details class="myst-admonition myst-admonition-note dropdown"><summary class="myst-admonition-title">More</summary>',
     );
+    expect(html).toContain(
+      '<details class="myst-dropdown" open><summary class="myst-dropdown-title">Open me</summary>',
+    );
+    expect(html).toContain('<aside class="myst-aside myst-aside-margin">In the margin</aside>');
+    expect(html).toContain('<aside class="myst-aside myst-aside-sidebar">Beside</aside>');
   });
 
   it('highlights code with Shiki and can disable it', async () => {
     const code: MystNode = { type: 'code', lang: 'python', value: 'x = 1', emphasizeLines: [1] };
     const { html } = await render([code]);
+    expect(html).toMatch(/^<div class="myst-code-wrapper" data-lang="python"><pre [^>]*class="shiki /);
     expect(html).toContain('class="shiki shiki-themes github-light github-dark myst-code-block"');
     expect(html).toContain('class="line highlighted"');
     const plain = await render([code], { codeThemes: false });

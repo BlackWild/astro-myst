@@ -592,7 +592,7 @@ class MystRenderer {
         }
         const header = n.filename ? [this.el('div', { class: 'myst-code-filename' }, n.filename)] : [];
         return [
-          this.el('div', { class: cls('myst-code', n.class), id: n.label ? id : undefined, dataLang: n.lang }, [
+          this.el('div', { class: cls('myst-code-wrapper', n.class), id: n.label ? id : undefined, dataLang: n.lang }, [
             ...header,
             pre,
           ]),
@@ -646,14 +646,21 @@ class MystRenderer {
           ]),
         ];
       }
-      case 'details':
-        return [this.el('details', { class: n.class, open: n.open }, kids())];
+      case 'details': // the {dropdown} directive
+        return [this.el('details', { class: cls('myst-dropdown', n.class), open: n.open }, kids())];
       case 'summary':
-        return [this.el('summary', null, kids())];
+        return [this.el('summary', { class: parent?.type === 'details' ? 'myst-dropdown-title' : undefined }, kids())];
       case 'aside':
       case 'margin':
       case 'sidebar':
-        return [this.el('aside', { class: cls('myst-aside', `myst-aside-${n.kind ?? n.type}`, n.class) }, kids())];
+        // mystmd gives {margin} and {aside} no kind; {sidebar} and {topic} have one.
+        return [
+          this.el(
+            'aside',
+            { class: cls('myst-aside', `myst-aside-${n.kind ?? (n.type === 'aside' ? 'margin' : n.type)}`, n.class) },
+            kids(),
+          ),
+        ];
       case 'card':
         return [
           this.el(

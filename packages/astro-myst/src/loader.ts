@@ -20,6 +20,7 @@ import {
   IGNORED_DIRS,
   type MystTocEntry,
   readFrontmatter,
+  sourceFileOf,
   writeProject,
 } from './project.js';
 import { type MarkdownHeading, type MystRenderSettings, renderMystPage } from './render.js';
@@ -116,7 +117,7 @@ function publishAssets(publicDir: string, used: Set<string>, dir: string) {
  * ```ts
  * // src/content.config.ts
  * import { defineCollection } from 'astro:content';
- * import { mystLoader } from 'astro-myst';
+ * import { mystLoader } from 'astro-myst/loaders';
  * export const collections = { blog: defineCollection({ loader: mystLoader({ base: './src/content/blog' }) }) };
  * ```
  */
@@ -170,6 +171,7 @@ export function mystLoader(options: MystLoaderOptions) {
           sources,
           toc: options.toc,
           project,
+          execute: args.includes('--execute'),
         });
         inputs = [baseDir, ...extraInputs, ...projectConfig.inputs];
         watcher?.add(inputs);
@@ -205,8 +207,8 @@ export function mystLoader(options: MystLoaderOptions) {
         for (const { slug, level, enumerator } of toc) {
           const page = build.pages.get(slug);
           if (!page) continue;
-          const file = path.join(projectDir, page.location);
-          if (isInside(file, projectDir)) continue; // the generated placeholder root page
+          const file = sourceFileOf(page.location, projectDir, baseDir);
+          if (!file) continue; // the generated placeholder root page
           const rel = posix(path.relative(baseDir, file));
           const text = /\.ipynb$/i.test(file) ? undefined : fs.readFileSync(file, 'utf8');
           const { data: raw, body }: { data: Record<string, unknown>; body?: string } =

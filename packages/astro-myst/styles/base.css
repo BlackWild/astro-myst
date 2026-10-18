@@ -1,196 +1,206 @@
 /* biome-ignore-all lint/complexity/noImportantStyles: Shiki writes light colours as inline styles; only !important can switch code to the dark theme (Shiki's documented dual-theme approach). */
-/* astro-myst base styles: only what MyST content needs to work. Every selector is wrapped in
-   :where(), so these rules have zero specificity: your own CSS, Tailwind utilities and `prose`
-   always win. The integration adds this file (with katex.css) to every page unless `styles: false`.
-   For a complete look, use the optional astro-myst/theme.css (`styles: 'theme'`). */
+/* astro-myst base styles: only what MyST content needs to work. The integration adds this file
+   (with katex.css) to every page unless `styles: false`; for a complete look, add the optional
+   astro-myst/theme.css (`styles: 'theme'`).
 
-/* Math: numbers beside display equations; long equations scroll instead of overflowing. */
-:where(.myst-math-display) {
-  display: flex;
-  align-items: center;
-  gap: 1em;
-}
-:where(.myst-math-body) {
-  flex: 1;
-  min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-:where(.myst-math-display .katex-display) {
-  margin: 0;
-}
-/* MyST numbers a display-math block once (a LaTeX align environment gets one number, attached
-   to its first \label); hide KaTeX's own per-line numbers so the two schemes never disagree. */
-:where(.myst-math-display .eqn-num) {
-  display: none;
-}
+   The rules have zero specificity (:where) and sit in the cascade layer `components`, after
+   Tailwind's preflight (`base`) and before its utilities and `prose` (`utilities`): your own CSS
+   always wins, and so does Tailwind. The statement below fixes Tailwind 4's layer order whichever
+   stylesheet loads first; without Tailwind it only names empty layers. */
 
-/* Code: Shiki colours code for the light theme; switch to the dark theme in dark mode, following
-   the system setting, or a `dark` class / data-theme="dark" on an ancestor (as Tailwind does). */
-@media (prefers-color-scheme: dark) {
-  :where(:root:not(.light):not([data-theme="light"])) :where(pre.shiki, pre.shiki span) {
+@layer theme, base, components, utilities;
+
+@layer components {
+  /* Math: numbers beside display equations; long equations scroll instead of overflowing. */
+  :where(.myst-math-display) {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+  }
+  :where(.myst-math-body) {
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  /* Code: Shiki colours code for the light theme; switch to the dark theme in dark mode, following
+     the system setting, or a `dark` class / data-theme="dark" on an ancestor (as Tailwind does). */
+  @media (prefers-color-scheme: dark) {
+    :where(:root:not(.light):not([data-theme="light"])) :where(pre.shiki, pre.shiki span) {
+      color: var(--shiki-dark) !important;
+      background-color: var(--shiki-dark-bg) !important;
+      font-style: var(--shiki-dark-font-style) !important;
+      font-weight: var(--shiki-dark-font-weight) !important;
+    }
+  }
+  :where(.dark, [data-theme="dark"]) :where(pre.shiki, pre.shiki span) {
     color: var(--shiki-dark) !important;
     background-color: var(--shiki-dark-bg) !important;
     font-style: var(--shiki-dark-font-style) !important;
     font-weight: var(--shiki-dark-font-weight) !important;
   }
-}
-:where(.dark, [data-theme="dark"]) :where(pre.shiki, pre.shiki span) {
-  color: var(--shiki-dark) !important;
-  background-color: var(--shiki-dark-bg) !important;
-  font-style: var(--shiki-dark-font-style) !important;
-  font-weight: var(--shiki-dark-font-weight) !important;
-}
-:where(pre.myst-code-block) {
-  overflow-x: auto;
-}
-:where(pre.myst-code-block .line.highlighted) {
-  display: inline-block;
-  width: 100%;
-  background-color: rgba(127, 127, 127, 0.15) !important;
-}
-:where(pre.myst-line-numbers code) {
-  counter-reset: line;
-}
-:where(pre.myst-line-numbers .line)::before {
-  counter-increment: line;
-  content: counter(line);
-  display: inline-block;
-  width: 2em;
-  margin-right: 1em;
-  text-align: right;
-  opacity: 0.5;
+  :where(pre.myst-code-block) {
+    overflow-x: auto;
+  }
+  :where(pre.myst-code-block .line.highlighted) {
+    display: inline-block;
+    width: 100%;
+    background-color: rgba(127, 127, 127, 0.15) !important;
+  }
+  :where(pre.myst-line-numbers code) {
+    counter-reset: line;
+  }
+  :where(pre.myst-line-numbers .line)::before {
+    counter-increment: line;
+    content: counter(line);
+    display: inline-block;
+    width: 2em;
+    margin-right: 1em;
+    text-align: right;
+    opacity: 0.5;
+  }
+
+  /* Tabs work without JavaScript: radio buttons, one panel visible. */
+  :where(.myst-tabs) {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  :where(.myst-tabs > input) {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  :where(.myst-tabs > label) {
+    padding: 0.25em 0.75em;
+    cursor: pointer;
+  }
+  :where(.myst-tabs > input:checked + label) {
+    text-decoration: underline;
+    text-underline-offset: 0.3em;
+  }
+  :where(.myst-tabs > input:focus-visible + label) {
+    outline: 2px solid;
+  }
+  :where(.myst-tabs > .myst-tab-panel) {
+    order: 1;
+    flex-basis: 100%;
+    display: none;
+  }
+  :where(.myst-tabs > input:checked + label + .myst-tab-panel) {
+    display: block;
+  }
+
+  /* Grids: columns per breakpoint, as given in the {grid} directive. */
+  :where(.myst-grid) {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(var(--myst-grid-cols-0, 1), minmax(0, 1fr));
+  }
+  @media (min-width: 576px) {
+    :where(.myst-grid) {
+      grid-template-columns: repeat(var(--myst-grid-cols-1, 1), minmax(0, 1fr));
+    }
+  }
+  @media (min-width: 768px) {
+    :where(.myst-grid) {
+      grid-template-columns: repeat(var(--myst-grid-cols-2, 2), minmax(0, 1fr));
+    }
+  }
+  @media (min-width: 992px) {
+    :where(.myst-grid) {
+      grid-template-columns: repeat(var(--myst-grid-cols-3, 2), minmax(0, 1fr));
+    }
+  }
+  :where(.myst-card) {
+    display: block;
+  }
+
+  /* Figures, images and tables fit their container; sub-figures sit side by side. */
+  :where(figure.myst-container img, figure.myst-container video) {
+    max-width: 100%;
+    height: auto;
+  }
+  :where(figure:has(> figure.myst-subfigure)) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+  }
+  :where(figure:has(> figure.myst-subfigure) > figcaption) {
+    flex-basis: 100%;
+  }
+  :where(figure.myst-subfigure) {
+    flex: 1 1 14rem;
+  }
+  :where(img.myst-align-left, video.myst-align-left) {
+    float: left;
+    margin-right: 1em;
+  }
+  :where(img.myst-align-right, video.myst-align-right) {
+    float: right;
+    margin-left: 1em;
+  }
+  :where(.myst-table-wrapper) {
+    overflow-x: auto;
+  }
+
+  /* Heading anchors appear on hover and focus. */
+  :where(.myst-heading-anchor) {
+    margin-left: 0.3em;
+    text-decoration: none;
+    opacity: 0;
+  }
+  :where(:is(h1, h2, h3, h4, h5, h6):hover > .myst-heading-anchor, .myst-heading-anchor:focus-visible) {
+    opacity: 1;
+  }
+
+  /* Bibliography: no list numbers, except "[n]" for numbered citations. */
+  :where(.myst-bibliography-list) {
+    list-style: none;
+    padding-left: 0;
+  }
+  :where(.myst-bibliography-list.myst-numbered > li)::before {
+    content: "[" attr(data-enumerator) "] ";
+  }
+  :where(.myst-smallcaps) {
+    font-variant: small-caps;
+  }
+
+  /* Hover previews (astro-myst/XrefPreview.astro). */
+  :where(.myst-preview) {
+    position: absolute;
+    z-index: 50;
+    max-width: min(32rem, calc(100vw - 2rem));
+    max-height: 22rem;
+    overflow: auto;
+    padding: 0.75rem 1rem;
+    background: var(--myst-preview-bg, Canvas);
+    color: var(--myst-preview-fg, CanvasText);
+    border: 1px solid rgba(127, 127, 127, 0.35);
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    font-size: 0.9rem;
+  }
+  :where(.myst-preview img) {
+    max-height: 12rem;
+  }
+  :where(.myst-preview .myst-heading-anchor) {
+    display: none;
+  }
+  :where(.myst-preview-source) {
+    margin-bottom: 0.4rem;
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
 }
 
-/* Tabs work without JavaScript: radio buttons, one panel visible. */
-:where(.myst-tabs) {
-  display: flex;
-  flex-wrap: wrap;
+/* KaTeX's own stylesheet is not in a layer, so these overrides are not either. MyST numbers a
+   display-math block once (a LaTeX align environment gets one number, attached to its first
+   \label): hide KaTeX's per-line numbers so the two schemes never disagree. */
+.myst-math-display .katex-display {
+  margin: 0;
 }
-:where(.myst-tabs > input) {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-:where(.myst-tabs > label) {
-  padding: 0.25em 0.75em;
-  cursor: pointer;
-}
-:where(.myst-tabs > input:checked + label) {
-  text-decoration: underline;
-  text-underline-offset: 0.3em;
-}
-:where(.myst-tabs > input:focus-visible + label) {
-  outline: 2px solid;
-}
-:where(.myst-tabs > .myst-tab-panel) {
-  order: 1;
-  flex-basis: 100%;
+.myst-math-display .eqn-num {
   display: none;
-}
-:where(.myst-tabs > input:checked + label + .myst-tab-panel) {
-  display: block;
-}
-
-/* Grids: columns per breakpoint, as given in the {grid} directive. */
-:where(.myst-grid) {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(var(--myst-grid-cols-0, 1), minmax(0, 1fr));
-}
-@media (min-width: 576px) {
-  :where(.myst-grid) {
-    grid-template-columns: repeat(var(--myst-grid-cols-1, 1), minmax(0, 1fr));
-  }
-}
-@media (min-width: 768px) {
-  :where(.myst-grid) {
-    grid-template-columns: repeat(var(--myst-grid-cols-2, 2), minmax(0, 1fr));
-  }
-}
-@media (min-width: 992px) {
-  :where(.myst-grid) {
-    grid-template-columns: repeat(var(--myst-grid-cols-3, 2), minmax(0, 1fr));
-  }
-}
-:where(.myst-card) {
-  display: block;
-}
-
-/* Figures, images and tables fit their container; sub-figures sit side by side. */
-:where(figure.myst-container img, figure.myst-container video) {
-  max-width: 100%;
-  height: auto;
-}
-:where(figure:has(> figure.myst-subfigure)) {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  justify-content: center;
-}
-:where(figure:has(> figure.myst-subfigure) > figcaption) {
-  flex-basis: 100%;
-}
-:where(figure.myst-subfigure) {
-  flex: 1 1 14rem;
-}
-:where(img.myst-align-left, video.myst-align-left) {
-  float: left;
-  margin-right: 1em;
-}
-:where(img.myst-align-right, video.myst-align-right) {
-  float: right;
-  margin-left: 1em;
-}
-:where(.myst-table-wrapper) {
-  overflow-x: auto;
-}
-
-/* Heading anchors appear on hover and focus. */
-:where(.myst-heading-anchor) {
-  margin-left: 0.3em;
-  text-decoration: none;
-  opacity: 0;
-}
-:where(:is(h1, h2, h3, h4, h5, h6):hover > .myst-heading-anchor, .myst-heading-anchor:focus-visible) {
-  opacity: 1;
-}
-
-/* Bibliography: no list numbers, except "[n]" for numbered citations. */
-:where(.myst-bibliography-list) {
-  list-style: none;
-  padding-left: 0;
-}
-:where(.myst-bibliography-list.myst-numbered > li)::before {
-  content: "[" attr(data-enumerator) "] ";
-}
-:where(.myst-smallcaps) {
-  font-variant: small-caps;
-}
-
-/* Hover previews (astro-myst/XrefPreview.astro). */
-:where(.myst-preview) {
-  position: absolute;
-  z-index: 50;
-  max-width: min(32rem, calc(100vw - 2rem));
-  max-height: 22rem;
-  overflow: auto;
-  padding: 0.75rem 1rem;
-  background: var(--myst-preview-bg, Canvas);
-  color: var(--myst-preview-fg, CanvasText);
-  border: 1px solid rgba(127, 127, 127, 0.35);
-  border-radius: 0.5rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  font-size: 0.9rem;
-}
-:where(.myst-preview img) {
-  max-height: 12rem;
-}
-:where(.myst-preview .myst-heading-anchor) {
-  display: none;
-}
-:where(.myst-preview-source) {
-  margin-bottom: 0.4rem;
-  font-size: 0.75rem;
-  opacity: 0.7;
 }

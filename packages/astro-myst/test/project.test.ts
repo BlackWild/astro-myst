@@ -5,7 +5,15 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { parse as parseYaml } from 'yaml';
-import { createProjectConfig, entryIdFromPath, findSources, readFrontmatter } from '../src/project.js';
+import {
+  createProjectConfig,
+  entryIdFromPath,
+  findSources,
+  readFrontmatter,
+  SOURCE_LINK,
+  sourceFileOf,
+  writeProject,
+} from '../src/project.js';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'astro-myst-project-'));
 const touch = (file: string, text = '') => {
@@ -169,5 +177,79 @@ describe('createProjectConfig', () => {
     expect(explicit.inputs).toEqual(
       ['shared/refs.bib', 'plugins/a.mjs', 'plugins/b.py'].map((f) => path.join(root, ...f.split('/'))),
     );
+  });
+});
+
+describe('notebook execution', () => {
+  const setup = () => {
+    const root = tmp();
+    const baseDir = path.join(root, 'src', 'content', 'nb');
+    const projectDir = path.join(root, 'node_modules', '.astro', 'astro-myst', 'nb');
+    touch(path.join(baseDir, 'index.md'), '# Home\n');
+    touch(path.join(baseDir, 'run', 'analysis.ipynb'), '{}');
+    touch(path.join(baseDir, 'md-notebook.md'), '---\nkernelspec:\n  name: python3\n---\n');
+    const spec = {
+      collection: 'nb',
+      astroRoot: root,
+      baseDir,
+      projectDir,
+      project: {},
+      sources: ['index.md', 'md-notebook.md', 'run/analysis.ipynb'],
+    };
+    return { root, baseDir, projectDir, spec };
+  };
+  const files = (yaml: string) => parseYaml(yaml).project.toc.map((e: any) => e.file);
+
+  it('lists executable files through the source link only with --execute', async () => {
+    const { spec, baseDir } = setup();
+    const plain = await createProjectConfig(spec);
+    expect(plain.link).toBeUndefined();
+    expect(files(plain.yaml).every((f: string) => f.startsWith('../'))).toBe(true);
+
+    // All files go through the link, so that relative links between pages keep working.
+    const executed = await createProjectConfig({ ...spec, execute: true });
+    expect(executed.link).toBe(baseDir);
+    expect(files(executed.yaml)).toEqual([
+      `${SOURCE_LINK}/index.md`,
+      `${SOURCE_LINK}/md-notebook.md`,
+      `${SOURCE_LINK}/run/analysis.ipynb`,
+    ]);
+    // Nothing to execute: no link.
+    const markdown = await createProjectConfig({ ...spec, execute: true, sources: ['index.md'] });
+    expect(markdown.link).toBeUndefined();
+    expect(files(markdown.yaml)).toEqual(['../../../../src/content/nb/index.md']);
+    // A kernelspec in the project options makes Markdown files executable.
+    const project = { kernelspec: { name: 'python3' } };
+    const kernel = await createProjectConfig({ ...spec, execute: true, sources: ['index.md'], project });
+    expect(files(kernel.yaml)).toEqual([`${SOURCE_LINK}/index.md`]);
+  });
+
+  it('creates, keeps and removes the link without touching the content', async () => {
+    const { spec, baseDir, projectDir } = setup();
+    const link = path.join(projectDir, SOURCE_LINK);
+    const executed = await createProjectConfig({ ...spec, execute: true });
+    writeProject(projectDir, executed, 'nb');
+    expect(fs.lstatSync(link).isSymbolicLink()).toBe(true);
+    expect(fs.realpathSync(path.join(link, 'run', 'analysis.ipynb'))).toBe(
+      fs.realpathSync(path.join(baseDir, 'run', 'analysis.ipynb')),
+    );
+    const inode = fs.lstatSync(link).ino;
+    writeProject(projectDir, executed, 'nb');
+    expect(fs.lstatSync(link).ino).toBe(inode); // kept as it is
+
+    writeProject(projectDir, await createProjectConfig(spec), 'nb');
+    expect(fs.existsSync(link)).toBe(false);
+    expect(fs.readdirSync(baseDir).sort()).toEqual(['index.md', 'md-notebook.md', 'run']);
+  });
+
+  it('maps page locations back to the source files', () => {
+    const { baseDir, projectDir } = setup();
+    expect(sourceFileOf(`/${SOURCE_LINK}/run/analysis.ipynb`, projectDir, baseDir)).toBe(
+      path.join(baseDir, 'run', 'analysis.ipynb'),
+    );
+    expect(sourceFileOf('/../../../../src/content/nb/index.md', projectDir, baseDir)).toBe(
+      path.join(baseDir, 'index.md'),
+    );
+    expect(sourceFileOf('/index.md', projectDir, baseDir)).toBeUndefined(); // the placeholder
   });
 });

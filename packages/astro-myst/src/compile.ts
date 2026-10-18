@@ -184,7 +184,7 @@ export function compileMystProject(opts: CompileOptions): Promise<MystBuild> {
   return withLock(root, async () => {
     const { logger } = opts;
     if (!fs.existsSync(path.join(root, 'myst.yml'))) {
-      throw new Error(`No myst.yml found in ${root}. Run \`myst init\` there or fix the loader's \`root\` option.`);
+      throw new Error(`No myst.yml found in ${root}: compileMystProject() needs a MyST project folder.`);
     }
     const siteDir = path.join(root, '_build', 'site');
     // Start from a clean site folder so deleted pages and stale assets disappear.
