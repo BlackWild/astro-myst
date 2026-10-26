@@ -109,7 +109,7 @@
     "@types/hast": "^3.0.4",
     "@types/node": "^22.19.0",
     "@vitest/coverage-v8": "^5.0.4",
-    "astro": "^7.3.8",
+    "astro": "^7.4.1",
     "mystmd": "^1.11.0",
     "publint": "^0.3.25",
     "typescript": "^6.0.3",

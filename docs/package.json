@@ -9,12 +9,12 @@
     "typecheck": "astro check"
   },
   "dependencies": {
-    "astro": "^7.3.8",
+    "astro": "^7.4.1",
     "astro-myst": "*",
     "mystmd": "^1.11.0"
   },
   "devDependencies": {
-    "@astrojs/check": "^0.9.10",
+    "@astrojs/check": "^0.9.11",
     "mermaid": "^11.17.2",
     "pagefind": "^1.5.2",
     "typescript": "^6.0.3"
