@@ -14,7 +14,7 @@ Thanks for helping! Bug reports, documentation fixes and pull requests are all w
 
 ## Setup
 
-You need Node.js 22.12 or newer (the version in `.node-version` is used in CI) and npm 10.9 or newer.
+You need Node.js 22.22 or newer (what the Astro version used here needs; the version in `.node-version` is used in CI) and npm 10.9 or newer.
 
 ```sh
 git clone https://github.com/BlackWild/astro-myst.git

@@ -10,7 +10,7 @@ It is an npm-workspaces monorepo. The published package is `packages/astro-myst`
 
 ## Commands
 
-Node >= 22.12, npm >= 10.9. Run from the repo root.
+Node >= 22.22 (what the Astro version in the lockfile needs; the published package itself supports 22.12), npm >= 10.9. Run from the repo root.
 
 ```sh
 npm ci && npm run build        # the build is required before docs/examples/typecheck
@@ -60,6 +60,7 @@ Pipeline per collection: **discover files** → **generate project** → **compi
 - `test/readme.test.ts` keeps the README's custom-handler example working. The root `README.md` and `packages/astro-myst/README.md` (shown on npm) are separate near-copies; keep them in sync.
 - `katex` is a dependency only for its CSS (`styles/katex.css`); mystmd renders math with its own bundled KaTeX (0.15.6 as of mystmd 1.11). It is pinned to exactly that version and Dependabot ignores it: newer KaTeX renames the classes in mystmd's math HTML, so never upgrade it on its own. `test/katex.test.ts` fails when mystmd bundles a different version.
 - A new mystmd page format: test it, then add the version to `SUPPORTED_PAGE_VERSIONS` in `compile.ts`. A new Astro major: add it to `peerDependencies` and to the `compat` matrix in `.github/workflows/ci.yml`.
+- `peerDependencies` (astro, mystmd, the optional mermaid) are a promise to users, pinned by `test/peer-dependencies.test.ts`. Dependabot *replaces* a peer range when it moves a workspace to a new major (mermaid `^10.0.0 || ^11.0.0` became `^12.2.0`), so that test fails on such PRs: widen the range instead (old majors stay), add a changeset, update the test. Several Dependabot PRs touching `package-lock.json` conflict with each other; combining them in one branch (merge each, let `npm install --package-lock-only` resolve the lockfile conflicts) needs one CI run; once those commits reach main, GitHub shows the Dependabot PRs as merged (Dependabot closes any it rebased in the meantime).
 - Changes to the published package need a changeset (`npx changeset`; patch, minor or major). Docs, examples and CI changes do not. Releases are automated (a Changesets "Version Packages" pull request, then npm trusted publishing); see `MAINTAINING.md`.
 - Style is enforced by Biome: 2 spaces, single quotes, trailing commas, semicolons, 120 columns. `noExplicitAny` is off because the MyST AST is loosely typed (`MystNode` has `[key: string]: any`). ESM with `.js` import specifiers (NodeNext).
 - Generated and git-ignored: `_build/`, `public/_myst/` (old layout), `public/pagefind/`, `dist/`, `node_modules/.astro/` (holds the generated MyST projects). mystmd's asset file names (`name-<hash>.ext`) differ between checkouts even for identical content, so never commit them.
