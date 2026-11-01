@@ -84,8 +84,8 @@
   },
   "peerDependencies": {
     "astro": "^5.0.0 || ^6.0.0 || ^7.0.0",
-    "mystmd": "^1.3.0",
-    "mermaid": "^10.0.0 || ^11.0.0"
+    "mermaid": "^12.2.0",
+    "mystmd": "^1.3.0"
   },
   "peerDependenciesMeta": {
     "mystmd": {
