@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1
+
+### Patch Changes
+
+- [#21](https://github.com/BlackWild/astro-myst/pull/21) [`939dafa`](https://github.com/BlackWild/astro-myst/commit/939dafa2c55b41811d69eac935e9a64d7c95f007) Thanks [@BlackWild](https://github.com/BlackWild)! - Accept Mermaid 12 for the optional Mermaid script (`scripts: { mermaid: true }`), next to Mermaid 10 and 11.
+
 ## 0.3.0
 
 ### Minor Changes
