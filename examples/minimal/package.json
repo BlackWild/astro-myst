@@ -9,12 +9,12 @@
     "typecheck": "astro check"
   },
   "dependencies": {
-    "astro": "^7.4.1",
+    "astro": "^7.4.2",
     "astro-myst": "*",
     "mystmd": "^1.11.0"
   },
   "devDependencies": {
-    "@astrojs/check": "^0.9.11",
+    "@astrojs/check": "^0.9.12",
     "typescript": "^6.0.3"
   }
 }
