@@ -97,10 +97,10 @@
   },
   "dependencies": {
     "github-slugger": "^2.0.0",
-    "hast-util-to-html": "^9.0.5",
-    "hastscript": "^9.0.1",
+    "hast-util-to-html": "^9.0.6",
+    "hastscript": "^9.0.3",
     "katex": "0.15.6",
-    "shiki": "^1.0.0 || ^2.0.0 || ^3.0.0 || ^4.0.0",
+    "shiki": "^4.6.0",
     "tinyglobby": "^0.2.10",
     "yaml": "^2.8.1"
   },
